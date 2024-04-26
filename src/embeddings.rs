@@ -8,7 +8,7 @@ struct EmbeddingsRequest {
 }
 
 pub trait EmbeddingsClient {
-    fn get_embeddings(&self, text: String) -> Result<Vec<f32>, ()>;
+    fn get_embeddings(&self, text: &String) -> Result<Vec<f32>, ()>;
 }
 
 // Ollama implementation
@@ -35,7 +35,7 @@ struct OllamaResponse {
 }
 
 impl EmbeddingsClient for OllamaEmbeddingsClient {
-    fn get_embeddings(&self, text: String) -> Result<Vec<f32>, ()> {
+    fn get_embeddings(&self, text: &String) -> Result<Vec<f32>, ()> {
         info!("Ollama embeddings for: {}", text);
         let url = format!("{}/api/embeddings", self.base_url,);
         let client = reqwest::blocking::Client::new();

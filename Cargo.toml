@@ -12,3 +12,5 @@ serde_json = "1.0"
 reqwest = { version = "0.11", features = ["blocking"] }
 tracing = "0.1"
 tracing-subscriber = "0.3.18"
+text-splitter = { version = "0.12.1", features = ["tiktoken-rs"] }
+tiktoken-rs = "0.5.8"

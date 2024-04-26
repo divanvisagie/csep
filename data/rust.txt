@@ -1,0 +1,36 @@
+The rust programming language
+
+this is a document about the rust programming language
+
+The Rust crate `text-splitter` could be a good starting point for chunking text into smaller segments before processing them further, such as generating embeddings. This crate is designed to split text into parts that are under a certain length without cutting words in half. It's particularly useful for message segmentation in applications like SMS or tweets where there's a strict character limit.
+
+Here’s how you might use the `text-splitter` crate:
+
+1. **Add to Cargo.toml**:
+   First, add `text-splitter` to your `Cargo.toml` file to include it in your project:
+   ```toml
+   [dependencies]
+   text-splitter = "0.1.2"
+   ```
+
+2. **Using text-splitter**:
+   Here's an example of how to use `text-splitter` to break a longer text into chunks of a specified maximum length:
+   ```rust
+   extern crate text_splitter;
+
+   fn main() {
+       let text = "This is a sample text that needs to be split into smaller segments that each have a maximum length. This ensures that the chunks are manageable for further processing.";
+       let max_length = 50; // Maximum length of each chunk
+
+       let chunks = text_splitter::split_into(text, max_length);
+       for chunk in chunks {
+           println!("{}", chunk);
+       }
+   }
+   ```
+   This code will print each chunk of the text, ensuring that no chunk exceeds the specified length of 50 characters, and that words are not split across chunks.
+
+This crate doesn’t perform semantic chunking (based on meaning or syntax), but it does provide a useful utility for dividing text into size-constrained parts, which can then be processed further, possibly by adding NLP features like POS tagging or semantic analysis using other tools or services.
+
+For semantic chunking, you’d still need to integrate or implement additional NLP functionalities, possibly by combining `text-splitter` with other libraries or external APIs capable of handling more complex language processing tasks.
+ 
