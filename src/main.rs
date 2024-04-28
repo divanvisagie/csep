@@ -67,8 +67,11 @@ fn run(search_phrase: &String, floor: &f32) {
     let files = get_all_files_in_directory(current_directory);
     let documents = files
         .iter()
-        .map(|file| {
-            let text = fs::read_to_string(file).unwrap();
+        .filter_map(|file| {
+            let text = match fs::read_to_string(file) {
+                Ok(text) => text,
+                Err(_) => return None,
+            };
             let chunks = splitter.chunks(&text).map(|chunk| chunk.to_string());
             let chunks = chunks.map(|chunk| {
                 let embeddings = oec.get_embeddings(&chunk).unwrap();
@@ -78,16 +81,15 @@ fn run(search_phrase: &String, floor: &f32) {
                 }
             });
 
-            Document {
+            Some(Document {
                 path: file.to_string(),
                 chunks: chunks.collect(),
-            }
+            })
         })
         .collect::<Vec<Document>>();
 
     println!("Results for search phrase: {}\n", search_phrase);
     for document in documents {
-        println!("file: {}", document.path);
         let chunks = document.chunks.iter().filter(|chunk| {
             let similarity = cosine_similarity(&search_chunk.embeddings, &chunk.embeddings);
             similarity > *floor
@@ -95,6 +97,7 @@ fn run(search_phrase: &String, floor: &f32) {
         if chunks.clone().count() == 0 {
             continue;
         }
+        println!("file: {}", document.path);
         for chunk in chunks {
             println!("chunk: {}", chunk.text);
             let similarity = cosine_similarity(&search_chunk.embeddings, &chunk.embeddings);
