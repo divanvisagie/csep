@@ -37,20 +37,15 @@ fn get_all_files_in_directory(dir: &str) -> Vec<String> {
     }
     files
 }
-
-fn main() {
+fn run(search_phrase: &String, floor: &f32) {
     let oec = OllamaEmbeddingsClient::new();
-
-    let search_phrase = "rust programming language".to_string();
     let search_chunk = Chunk {
         text: search_phrase.clone(),
         embeddings: oec.get_embeddings(&search_phrase).unwrap(),
     };
-
     let tokenizer = cl100k_base().unwrap();
     let max_tokens = 100;
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
-    let floor: f32 = 0.2;
 
     let files = get_all_files_in_directory("data");
     let documents = files
@@ -78,7 +73,7 @@ fn main() {
         println!("file: {}", document.path);
         let chunks = document.chunks.iter().filter(|chunk| {
             let similarity = cosine_similarity(&search_chunk.embeddings, &chunk.embeddings);
-            similarity > floor
+            similarity > *floor
         });
         if chunks.clone().count() == 0 {
             continue;
@@ -89,6 +84,12 @@ fn main() {
             println!("similarity: {}\n", similarity);
         }
     }
+}
+
+fn main() {
+    let search_phrase = "rust programming language".to_string();
+    let floor: f32 = 0.2;
+    run(&search_phrase, &floor);
 }
 
 #[cfg(test)]
