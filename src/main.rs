@@ -73,12 +73,16 @@ fn run(search_phrase: &String, floor: &f32) {
                 Err(_) => return None,
             };
             let chunks = splitter.chunks(&text).map(|chunk| chunk.to_string());
-            let chunks = chunks.map(|chunk| {
-                let embeddings = oec.get_embeddings(&chunk).unwrap();
-                Chunk {
+            let chunks = chunks.filter_map(|chunk| {
+                let embeddings = oec.get_embeddings(&chunk).unwrap_or_default();
+                if embeddings.is_empty() {
+                    return None;
+                }
+                
+                Some(Chunk {
                     text: chunk,
                     embeddings,
-                }
+                })
             });
 
             Some(Document {
