@@ -40,6 +40,11 @@ fn get_all_files_in_directory(dir: &str) -> Vec<String> {
     for path in paths {
         let path = path.unwrap().path();
         let path_str = path.to_str().unwrap().to_string();
+        if path.is_dir() {
+            let mut nested_files = get_all_files_in_directory(&path_str);
+            files.append(&mut nested_files);
+            continue;
+        }
         files.push(path_str);
     }
     files
