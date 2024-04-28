@@ -132,8 +132,9 @@ mod tests {
     #[test]
     fn test_get_all_files_in_directory() {
         let files = get_all_files_in_directory("data");
-        assert_eq!(files.len(), 2);
+        assert_eq!(files.len(), 3);
         assert_eq!(files[0], "data/rust.txt");
-        assert_eq!(files[1], "data/typescript.txt");
+        assert_eq!(files[1], "data/subdir/more.txt");
+        assert_eq!(files[2], "data/typescript.txt");
     }
 }
