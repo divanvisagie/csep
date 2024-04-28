@@ -50,6 +50,7 @@ fn main() {
     let tokenizer = cl100k_base().unwrap();
     let max_tokens = 100;
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
+    let floor: f32 = 0.2;
 
     let files = get_all_files_in_directory("data");
     let documents = files
@@ -64,7 +65,7 @@ fn main() {
                     embeddings,
                 }
             });
-            
+
             Document {
                 path: file.to_string(),
                 chunks: chunks.collect(),
@@ -72,13 +73,21 @@ fn main() {
         })
         .collect::<Vec<Document>>();
 
+    println!("Results for search phrase: {}\n", search_phrase);
     for document in documents {
-        println!("{}", document.path);
-        for chunk in document.chunks {
-            println!("{}", chunk.text);
-            println!("{}", cosine_similarity(&search_chunk.embeddings, &chunk.embeddings));
+        println!("file: {}", document.path);
+        let chunks = document.chunks.iter().filter(|chunk| {
+            let similarity = cosine_similarity(&search_chunk.embeddings, &chunk.embeddings);
+            similarity > floor
+        });
+        if chunks.clone().count() == 0 {
+            continue;
         }
-        println!();
+        for chunk in chunks {
+            println!("chunk: {}", chunk.text);
+            let similarity = cosine_similarity(&search_chunk.embeddings, &chunk.embeddings);
+            println!("similarity: {}\n", similarity);
+        }
     }
 }
 
