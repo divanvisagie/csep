@@ -1,4 +1,6 @@
 # csep
+[![crates.io](https://img.shields.io/crates/v/csep.svg)](https://crates.io/crates/csep)
+
 Cosine Similarity Embeddings Print
 
 Like Grep (Global Regular Expression Print) takes a regular expression and
