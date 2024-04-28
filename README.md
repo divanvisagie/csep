@@ -12,3 +12,21 @@ but also allows you to use it in scripts and pipelines, if you combine it with a
 command line llm tool like
 [chat-gipity](https://github.com/divanvisagie/chat-gipity) or Ollama you could
 even potentially perform rag in a simple unix shell script.
+
+## Installation
+You will need to install ollama and pull the all-minilm model in order for csep
+to have something to get embeddings from.
+
+```sh
+ollama pull all-minilm
+```
+
+You can then install csep from this source using:
+```sh
+cargo install --path .
+```
+
+Or you can pull whatever the latest published version is from crates.io with
+```sh
+cargo install csep
+```
