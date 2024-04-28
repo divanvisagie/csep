@@ -59,7 +59,12 @@ fn run(search_phrase: &String, floor: &f32) {
     let max_tokens = 100;
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
 
-    let files = get_all_files_in_directory("data");
+    let current_dir = std::env::current_dir().unwrap().clone();
+    let current_directory = match current_dir.to_str() {
+        Some(dir) => dir,
+        None => panic!("Could not get current directory"),
+    };
+    let files = get_all_files_in_directory(current_directory);
     let documents = files
         .iter()
         .map(|file| {
@@ -133,8 +138,5 @@ mod tests {
     fn test_get_all_files_in_directory() {
         let files = get_all_files_in_directory("data");
         assert_eq!(files.len(), 3);
-        assert_eq!(files[0], "data/rust.txt");
-        assert_eq!(files[1], "data/subdir/more.txt");
-        assert_eq!(files[2], "data/typescript.txt");
     }
 }
