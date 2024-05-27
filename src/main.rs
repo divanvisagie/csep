@@ -7,6 +7,7 @@ use args::Args;
 use atty::Stream;
 use clap::Parser;
 use embeddings::OllamaEmbeddingsClient;
+use rayon::prelude::*;
 
 use crate::embeddings::EmbeddingsClient;
 use text_splitter::{ChunkConfig, TextSplitter};
@@ -17,9 +18,9 @@ mod embeddings;
 mod args;
 
 fn cosine_similarity(v1: &Vec<f32>, v2: &Vec<f32>) -> f32 {
-    let dot_product = v1.iter().zip(v2).map(|(a, b)| a * b).sum::<f32>();
-    let magnitude_v1 = (v1.iter().map(|a| a.powi(2)).sum::<f32>()).sqrt();
-    let magnitude_v2 = (v2.iter().map(|a| a.powi(2)).sum::<f32>()).sqrt();
+    let dot_product = v1.par_iter().zip(v2).map(|(a, b)| a * b).sum::<f32>();
+    let magnitude_v1 = (v1.par_iter().map(|a| a.powi(2)).sum::<f32>()).sqrt();
+    let magnitude_v2 = (v2.par_iter().map(|a| a.powi(2)).sum::<f32>()).sqrt();
     let magnitude_product = magnitude_v1 * magnitude_v2;
     dot_product / magnitude_product
 }
