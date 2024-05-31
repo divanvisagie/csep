@@ -62,7 +62,12 @@ fn get_cache_path() -> PathBuf {
 
 
 fn chunk_file_with_embeddings(file: &str, oec: &OllamaEmbeddingsClient) -> Vec<Chunk> {
-    let text = fs::read_to_string(file).unwrap();
+    let text = match fs::read_to_string(file) {
+        Ok(text) => text,
+        Err(_) => {
+            return Vec::new();
+        }
+    };
 
     let hash_of_file = Sha256::digest(text.as_bytes());
     let cache_file_name = format!("{:x}.cache", hash_of_file);
