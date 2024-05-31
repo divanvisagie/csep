@@ -4,6 +4,7 @@ use std::{
 };
 
 extern crate bincode;
+use ignore::WalkBuilder;
 use args::Args;
 use atty::Stream;
 use clap::Parser;
@@ -40,18 +41,23 @@ struct Document {
 }
 
 fn get_all_files_in_directory(dir: &str) -> Vec<String> {
-    let paths = fs::read_dir(dir).unwrap();
     let mut files = Vec::new();
-    for path in paths {
-        let path = path.unwrap().path();
-        let path_str = path.to_str().unwrap().to_string();
-        if path.is_dir() {
-            let mut nested_files = get_all_files_in_directory(&path_str);
-            files.append(&mut nested_files);
-            continue;
+    
+    for result in WalkBuilder::new(dir).build() {
+        match result {
+            Ok(entry) => {
+                let path = entry.path();
+                // Check if it's a file
+                if path.is_file() {
+                    if let Some(path_str) = path.to_str() {
+                        files.push(path_str.to_string());
+                    }
+                }
+            }
+            Err(err) => eprintln!("ERROR: {:?}", err),
         }
-        files.push(path_str);
     }
+
     files
 }
 
