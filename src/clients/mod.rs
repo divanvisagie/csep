@@ -1,5 +1,8 @@
+use std::path::PathBuf;
+
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
+use anyhow::Result;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct EmbeddingsRequest {
@@ -8,7 +11,7 @@ struct EmbeddingsRequest {
 }
 
 pub trait EmbeddingsClient {
-    fn get_embeddings(&self, text: &String) -> Result<Vec<f32>, ()>;
+    fn get_embeddings(&self, text: &String) -> Result<Vec<f32>>;
 }
 
 // Ollama implementation
@@ -35,9 +38,8 @@ struct OllamaResponse {
 }
 
 impl EmbeddingsClient for OllamaEmbeddingsClient {
-    fn get_embeddings(&self, text: &String) -> Result<Vec<f32>, ()> {
-        info!("Ollama embeddings for: {}", text);
-        let url = format!("{}/api/embeddings", self.base_url,);
+    fn get_embeddings(&self, text: &String) -> Result<Vec<f32>> {
+        let url = format!("{}/api/embeddings", self.base_url);
         let client = reqwest::blocking::Client::new();
 
         let request_body = serde_json::to_string(&OllamaRequest {
@@ -47,18 +49,13 @@ impl EmbeddingsClient for OllamaEmbeddingsClient {
     
         let response = client.post(&url).body(request_body.unwrap()).send();
 
-        let ollama_response = match response {
-            Ok(response) => response.text().unwrap(),
-            Err(e) => {
-                error!("Error in response: {}", e);
-                return Err(());
-            }
-        };
+        let ollama_response = response.unwrap().text()?;
+
         let response_object: OllamaResponse = match serde_json::from_str(&ollama_response) {
             Ok(object) => object,
             Err(e) => {
                 error!("Error in respone object: {}", e);
-                return Err(());
+                return Err(anyhow::anyhow!("Error in response object"));
             }
         };
 

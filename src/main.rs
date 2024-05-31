@@ -1,20 +1,23 @@
 use std::{
     fs,
-    io::{self, BufRead},
+    io::{self, BufRead}, path::PathBuf,
 };
 
+extern crate bincode;
 use args::Args;
 use atty::Stream;
 use clap::Parser;
-use embeddings::OllamaEmbeddingsClient;
+use clients::OllamaEmbeddingsClient;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
-use crate::embeddings::EmbeddingsClient;
+use crate::clients::EmbeddingsClient;
 use text_splitter::{ChunkConfig, TextSplitter};
 
 use tiktoken_rs::cl100k_base;
 
-mod embeddings;
+mod clients;
 mod args;
 
 fn cosine_similarity(v1: &Vec<f32>, v2: &Vec<f32>) -> f32 {
@@ -25,6 +28,7 @@ fn cosine_similarity(v1: &Vec<f32>, v2: &Vec<f32>) -> f32 {
     dot_product / magnitude_product
 }
 
+#[derive(Serialize, Deserialize)]
 struct Chunk {
     text: String,
     embeddings: Vec<f32>,
@@ -50,6 +54,45 @@ fn get_all_files_in_directory(dir: &str) -> Vec<String> {
     }
     files
 }
+
+fn get_cache_path() -> PathBuf {
+    let tmp_dir = dirs::cache_dir().unwrap();
+    tmp_dir.join("csep") 
+}
+
+
+fn chunk_file_with_embeddings(file: &str, oec: &OllamaEmbeddingsClient) -> Vec<Chunk> {
+    let text = fs::read_to_string(file).unwrap();
+
+    let hash_of_file = Sha256::digest(text.as_bytes());
+    let cache_file_name = format!("{:x}.cache", hash_of_file);
+    let file_path = get_cache_path().join(cache_file_name);
+
+    if file_path.exists() {
+        let chunks: Vec<Chunk> = bincode::deserialize(&fs::read(file_path).unwrap()).unwrap();
+        return chunks;
+    }
+    
+    let tokenizer = cl100k_base().unwrap();
+    let max_tokens = 100;
+    let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
+    let chunks = splitter.chunks(&text).map(|chunk| {
+        let embeddings = oec.get_embeddings(&chunk.to_string()).unwrap_or_default();
+        Chunk {
+            text: chunk.to_string(),
+            embeddings,
+        }
+    });
+
+    // write to cache
+    let chunks: Vec<Chunk> = chunks.collect();
+    // make sure directory exists
+    fs::create_dir_all(get_cache_path()).unwrap();
+    fs::write(file_path, bincode::serialize(&chunks).unwrap()).unwrap();
+
+    chunks
+}
+
 fn run(search_phrase: &String, floor: &f32) {
     let oec = OllamaEmbeddingsClient::new();
     let search_chunk = Chunk {
@@ -69,26 +112,11 @@ fn run(search_phrase: &String, floor: &f32) {
     let documents = files
         .iter()
         .filter_map(|file| {
-            let text = match fs::read_to_string(file) {
-                Ok(text) => text,
-                Err(_) => return None,
-            };
-            let chunks = splitter.chunks(&text).map(|chunk| chunk.to_string());
-            let chunks = chunks.filter_map(|chunk| {
-                let embeddings = oec.get_embeddings(&chunk).unwrap_or_default();
-                if embeddings.is_empty() {
-                    return None;
-                }
-                
-                Some(Chunk {
-                    text: chunk,
-                    embeddings,
-                })
-            });
+            let chunks = chunk_file_with_embeddings(file, &oec);
 
             Some(Document {
                 path: file.to_string(),
-                chunks: chunks.collect(),
+                chunks,
             })
         })
         .collect::<Vec<Document>>();
