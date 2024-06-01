@@ -1,7 +1,5 @@
-use std::path::PathBuf;
-
 use serde::{Deserialize, Serialize};
-use tracing::{error, info};
+use tracing::error;
 use anyhow::Result;
 
 #[derive(Debug, Serialize, Deserialize)]

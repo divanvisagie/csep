@@ -1,17 +1,17 @@
+use anyhow::Result;
 use std::{
     fs::{self, File},
     io::{self, BufRead, Read},
     path::PathBuf,
 };
-use anyhow::Result;
 
 extern crate bincode;
-use ignore::WalkBuilder;
-use memmap2::Mmap;
 use args::Args;
 use atty::Stream;
 use clap::Parser;
 use clients::OllamaEmbeddingsClient;
+use ignore::WalkBuilder;
+use memmap2::Mmap;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -21,8 +21,8 @@ use text_splitter::{ChunkConfig, TextSplitter};
 
 use tiktoken_rs::cl100k_base;
 
-mod clients;
 mod args;
+mod clients;
 
 fn cosine_similarity(v1: &Vec<f32>, v2: &Vec<f32>) -> f32 {
     let dot_product = v1.par_iter().zip(v2).map(|(a, b)| a * b).sum::<f32>();
@@ -43,9 +43,25 @@ struct Document {
     chunks: Vec<Chunk>,
 }
 
+fn is_binary_file(file: &str) -> bool {
+    const SAMPLE_SIZE: usize = 8000;
+    let mut buffer = [0; SAMPLE_SIZE];
+
+    if let Ok(mut f) = File::open(file) {
+        if let Ok(size) = f.read(&mut buffer) {
+            for byte in &buffer[..size] {
+                if *byte == 0 || (*byte > 127 && byte != &9 && byte != &10 && byte != &13) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    false
+}
 fn get_all_files_in_directory(dir: &str) -> Vec<String> {
     let mut files = Vec::new();
-    
+
     for result in WalkBuilder::new(dir).build() {
         match result {
             Ok(entry) => {
@@ -53,7 +69,9 @@ fn get_all_files_in_directory(dir: &str) -> Vec<String> {
                 // Check if it's a file
                 if path.is_file() {
                     if let Some(path_str) = path.to_str() {
-                        files.push(path_str.to_string());
+                        if !is_binary_file(path_str) {
+                            files.push(path_str.to_string());
+                        }
                     }
                 }
             }
@@ -66,7 +84,7 @@ fn get_all_files_in_directory(dir: &str) -> Vec<String> {
 
 fn get_cache_path() -> PathBuf {
     let tmp_dir = dirs::cache_dir().unwrap();
-    tmp_dir.join("csep") 
+    tmp_dir.join("csep")
 }
 
 fn read_file_with_fallback(file: &str) -> Result<String> {
@@ -100,7 +118,7 @@ fn chunk_file_with_embeddings(file: &str, oec: &OllamaEmbeddingsClient) -> Vec<C
         let chunks: Vec<Chunk> = bincode::deserialize(&fs::read(file_path).unwrap()).unwrap();
         return chunks;
     }
-    
+
     let tokenizer = cl100k_base().unwrap();
     let max_tokens = 100;
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
@@ -127,9 +145,6 @@ fn run(search_phrase: &String, floor: &f32) {
         text: search_phrase.clone(),
         embeddings: oec.get_embeddings(&search_phrase).unwrap(),
     };
-    let tokenizer = cl100k_base().unwrap();
-    let max_tokens = 100;
-    let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
 
     let current_dir = std::env::current_dir().unwrap().clone();
     let current_directory = match current_dir.to_str() {
