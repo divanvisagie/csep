@@ -1,10 +1,13 @@
 use std::{
-    fs,
-    io::{self, BufRead}, path::PathBuf,
+    fs::{self, File},
+    io::{self, BufRead, Read},
+    path::PathBuf,
 };
+use anyhow::Result;
 
 extern crate bincode;
 use ignore::WalkBuilder;
+use memmap2::Mmap;
 use args::Args;
 use atty::Stream;
 use clap::Parser;
@@ -66,11 +69,25 @@ fn get_cache_path() -> PathBuf {
     tmp_dir.join("csep") 
 }
 
+fn read_file_with_fallback(file: &str) -> Result<String> {
+    // Try to memory map the file first
+    if let Ok(file_handle) = File::open(file) {
+        if let Ok(mmap) = unsafe { Mmap::map(&file_handle) } {
+            if let Ok(text) = std::str::from_utf8(&mmap) {
+                return Ok(text.to_string());
+            }
+        }
+    }
+
+    // Fallback to standard read_to_string if memory mapping fails
+    fs::read_to_string(file).map_err(|e| e.into())
+}
 
 fn chunk_file_with_embeddings(file: &str, oec: &OllamaEmbeddingsClient) -> Vec<Chunk> {
-    let text = match fs::read_to_string(file) {
+    let text = match read_file_with_fallback(file) {
         Ok(text) => text,
-        Err(_) => {
+        Err(err) => {
+            eprintln!("Error reading file {}: {}", file, err);
             return Vec::new();
         }
     };
@@ -166,6 +183,7 @@ pub fn get_stdin() -> String {
 
     lines.join("\n")
 }
+
 fn main() {
     let args = Args::parse();
     let stdin_text = get_stdin();
