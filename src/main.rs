@@ -1,26 +1,18 @@
-use anyhow::Result;
-use std::{
-    fs::{self, File},
-    io::{self, BufRead, Read},
-    path::PathBuf,
-};
+use files::{get_cache_path, read_file_with_fallback};
+use std::{fs, io::{self, BufRead}};
 
-extern crate bincode;
+use crate::{clients::EmbeddingsClient, files::get_all_files_in_directory};
 use args::Args;
 use atty::Stream;
 use clap::Parser;
 use clients::OllamaEmbeddingsClient;
-use ignore::WalkBuilder;
-use memmap2::Mmap;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-
-use crate::clients::EmbeddingsClient;
 use text_splitter::{ChunkConfig, TextSplitter};
-
 use tiktoken_rs::cl100k_base;
 
+mod files;
 mod args;
 mod clients;
 
@@ -41,64 +33,6 @@ struct Chunk {
 struct Document {
     path: String,
     chunks: Vec<Chunk>,
-}
-
-fn is_binary_file(file: &str) -> bool {
-    const SAMPLE_SIZE: usize = 8000;
-    let mut buffer = [0; SAMPLE_SIZE];
-
-    if let Ok(mut f) = File::open(file) {
-        if let Ok(size) = f.read(&mut buffer) {
-            for byte in &buffer[..size] {
-                if *byte == 0 || (*byte > 127 && byte != &9 && byte != &10 && byte != &13) {
-                    return true;
-                }
-            }
-        }
-    }
-
-    false
-}
-fn get_all_files_in_directory(dir: &str) -> Vec<String> {
-    let mut files = Vec::new();
-
-    for result in WalkBuilder::new(dir).build() {
-        match result {
-            Ok(entry) => {
-                let path = entry.path();
-                // Check if it's a file
-                if path.is_file() {
-                    if let Some(path_str) = path.to_str() {
-                        if !is_binary_file(path_str) {
-                            files.push(path_str.to_string());
-                        }
-                    }
-                }
-            }
-            Err(err) => eprintln!("ERROR: {:?}", err),
-        }
-    }
-
-    files
-}
-
-fn get_cache_path() -> PathBuf {
-    let tmp_dir = dirs::cache_dir().unwrap();
-    tmp_dir.join("csep")
-}
-
-fn read_file_with_fallback(file: &str) -> Result<String> {
-    // Try to memory map the file first
-    if let Ok(file_handle) = File::open(file) {
-        if let Ok(mmap) = unsafe { Mmap::map(&file_handle) } {
-            if let Ok(text) = std::str::from_utf8(&mmap) {
-                return Ok(text.to_string());
-            }
-        }
-    }
-
-    // Fallback to standard read_to_string if memory mapping fails
-    fs::read_to_string(file).map_err(|e| e.into())
 }
 
 fn chunk_file_with_embeddings(file: &str, oec: &OllamaEmbeddingsClient) -> Vec<Chunk> {
@@ -210,13 +144,3 @@ fn main() {
     run(&search_phrase, &floor);
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_get_all_files_in_directory() {
-        let files = get_all_files_in_directory("data");
-        assert_eq!(files.len(), 3);
-    }
-}
