@@ -11,10 +11,13 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use text_splitter::{ChunkConfig, TextSplitter};
 use tiktoken_rs::cl100k_base;
+use anyhow::Result;
 
 mod files;
 mod args;
 mod clients;
+
+const DEFAULT_FLOOR: f32 = 0.2;
 
 fn cosine_similarity(v1: &Vec<f32>, v2: &Vec<f32>) -> f32 {
     let dot_product = v1.par_iter().zip(v2).map(|(a, b)| a * b).sum::<f32>();
@@ -33,6 +36,25 @@ struct Chunk {
 struct Document {
     path: String,
     chunks: Vec<Chunk>,
+}
+
+struct PrintableChunk {
+    chunk: String,
+    similarity: f32,
+}
+struct PrintableFile {
+    file: String,
+    chunks: Vec<PrintableChunk>,
+}
+
+impl PrintableFile {
+    fn print(&self) {
+        println!("file: {}", self.file);
+        for chunk in &self.chunks {
+            println!("chunk: {}", chunk.chunk);
+            println!("similarity: {}\n", chunk.similarity);
+        }
+    }
 }
 
 fn chunk_file_with_embeddings(file: &str, oec: &OllamaEmbeddingsClient) -> Vec<Chunk> {
@@ -73,7 +95,7 @@ fn chunk_file_with_embeddings(file: &str, oec: &OllamaEmbeddingsClient) -> Vec<C
     chunks
 }
 
-fn run(search_phrase: &String, floor: &f32) {
+fn run_standard(search_phrase: &String, floor: &f32, no_query: &bool) {
     let oec = OllamaEmbeddingsClient::new();
     let search_chunk = Chunk {
         text: search_phrase.clone(),
@@ -98,7 +120,10 @@ fn run(search_phrase: &String, floor: &f32) {
         })
         .collect::<Vec<Document>>();
 
-    println!("Results for search phrase: {}\n", search_phrase);
+    if !no_query {
+        println!("Results for search phrase: {}\n", search_phrase);
+    }
+    
     for document in documents {
         let chunks = document.chunks.iter().filter(|chunk| {
             let similarity = cosine_similarity(&search_chunk.embeddings, &chunk.embeddings);
@@ -107,12 +132,18 @@ fn run(search_phrase: &String, floor: &f32) {
         if chunks.clone().count() == 0 {
             continue;
         }
-        println!("file: {}", document.path);
-        for chunk in chunks {
-            println!("chunk: {}", chunk.text);
-            let similarity = cosine_similarity(&search_chunk.embeddings, &chunk.embeddings);
-            println!("similarity: {}\n", similarity);
-        }
+
+        let printable_chunks = chunks.map(|chunk| PrintableChunk {
+            chunk: chunk.text.clone(),
+            similarity: cosine_similarity(&search_chunk.embeddings, &chunk.embeddings),
+        }).collect::<Vec<PrintableChunk>>();
+
+        let printable_file = PrintableFile {
+            file: document.path.clone(),
+            chunks: printable_chunks,
+        };
+
+        printable_file.print();       
     }
 }
 
@@ -133,14 +164,42 @@ pub fn get_stdin() -> String {
     lines.join("\n")
 }
 
+fn do_comparison(first: String, second: String) -> Result<()> {
+    let oec = OllamaEmbeddingsClient::new();
+    let first_chunk = Chunk {
+        text: first.clone(),
+        embeddings: oec.get_embeddings(&first)?,
+    };
+    let second_chunk = Chunk {
+        text: second.clone(),
+        embeddings: oec.get_embeddings(&second)?,
+    };
+
+    let similarity = cosine_similarity(&first_chunk.embeddings, &second_chunk.embeddings);
+    println!("first: {}", first);
+    println!("second: {}", second);
+    println!("similarity: {}", similarity);
+    Ok(())
+}
+
 fn main() {
     let args = Args::parse();
-    let stdin_text = get_stdin();
     let mut search_phrase = args.query.unwrap_or("".to_string());
+
+    if let Some(comparison) = args.comparison {
+        match do_comparison(search_phrase, comparison) {
+            Ok(_) => return,
+            Err(err) => eprintln!("Error while doing comparison: {}", err),
+        }
+        return;
+    }
+
+    let stdin_text = get_stdin();
     if !stdin_text.is_empty() {
         search_phrase = stdin_text;
     }
-    let floor = args.floor.unwrap_or(0.2);
-    run(&search_phrase, &floor);
+
+    let floor = args.floor.unwrap_or(DEFAULT_FLOOR);
+    run_standard(&search_phrase, &floor, &args.no_query);
 }
 

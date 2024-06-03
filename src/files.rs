@@ -8,7 +8,7 @@ use std::{
 use ignore::WalkBuilder;
 use memmap2::Mmap;
 
-pub fn is_binary_file(file: &str) -> bool {
+fn is_binary_file(file: &str) -> bool {
     const SAMPLE_SIZE: usize = 8000;
     let mut buffer = [0; SAMPLE_SIZE];
 

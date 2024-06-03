@@ -7,8 +7,18 @@ pub struct Args {
     #[arg(index = 1)]
     pub query: Option<String>,
 
+    /// If provided will compare the query to this string and then return
+    /// the cosine similarity score
+    #[arg(index = 2)]
+    pub comparison: Option<String>,
+
     /// Similarity floor, any result below this floating point will be
     /// filtered out from the results
     #[arg(short = 'f', long)]
     pub floor: Option<f32>,
+
+
+    /// If set will not print out the query with the results
+    #[arg(short, long)]
+    pub no_query: bool,
 }
