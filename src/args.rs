@@ -21,4 +21,12 @@ pub struct Args {
     /// If set will not print out the query with the results
     #[arg(short, long)]
     pub no_query: bool,
+
+    /// List the available embedding models
+    #[arg(short, long)]
+    pub list_models: bool,
+
+    /// Set the model
+    #[arg(short = 'M', long)]
+    pub model: Option<String>,
 }

@@ -60,7 +60,10 @@ impl PrintableFile {
     }
 }
 
-fn chunk_file_with_embeddings(file: &str, embeddings_client: &EmbeddingsClientImpl) -> Result<Vec<Chunk>> {
+fn chunk_file_with_embeddings(
+    file: &str,
+    embeddings_client: &EmbeddingsClientImpl,
+) -> Result<Vec<Chunk>> {
     let text = match read_file_with_fallback(file) {
         Ok(text) => text,
         Err(err) => {
@@ -180,8 +183,8 @@ pub fn get_stdin() -> String {
     lines.join("\n")
 }
 
-fn do_comparison(first: String, second: String) -> Result<()> {
-    let oec = OllamaEmbeddingsClient::new();
+fn do_comparison(first: String, second: String, model: Option<String>) -> Result<()> {
+    let oec = OllamaEmbeddingsClient::new(model);
     let first_chunk = Chunk {
         text: first.clone(),
         embeddings: oec.get_embeddings(&first)?,
@@ -203,10 +206,19 @@ fn main() {
     let mut search_phrase = args.query.unwrap_or("".to_string());
 
     if let Some(comparison) = args.comparison {
-        match do_comparison(search_phrase, comparison) {
+        match do_comparison(search_phrase, comparison, args.model) {
             Ok(_) => return,
             Err(err) => eprintln!("Error while doing comparison: {}", err),
         }
+        return;
+    }
+
+    if args.list_models {
+        // Benchmark leaderboard: https://huggingface.co/spaces/mteb/leaderboard
+        println!("Available models:");
+        println!("  - all-minilm");
+        //mxbai-embed-large
+        println!("  - mxbai-embed-large");
         return;
     }
 
@@ -216,9 +228,8 @@ fn main() {
     }
 
     let floor = args.floor.unwrap_or(DEFAULT_FLOOR);
-    let oec = OllamaEmbeddingsClient::new();
-    let embeddings_client = EmbeddingsClientImpl::Ollama(oec);
-    match run_standard(&embeddings_client, &search_phrase, &floor, &args.no_query) { 
+    let embeddings_client = EmbeddingsClientImpl::Ollama(OllamaEmbeddingsClient::new(args.model));
+    match run_standard(&embeddings_client, &search_phrase, &floor, &args.no_query) {
         Ok(_) => return,
         Err(err) => eprintln!("Error while running: {}", err),
     }
