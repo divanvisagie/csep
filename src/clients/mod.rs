@@ -33,7 +33,7 @@ impl OllamaEmbeddingsClient {
     pub fn new(model: Option<String>) -> Self {
         OllamaEmbeddingsClient {
             base_url: "http://localhost:11434",
-            model: model.unwrap_or_else(|| "all-minilm".to_string()),
+            model: model.unwrap_or("all-minilm".to_string()),
         }
     }
 }
