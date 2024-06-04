@@ -1,0 +1,51 @@
+.TH CSEP 1 "June 4, 2024" "1.0" "Cosine Similarity Embeddings Print"
+.SH NAME
+csep \- Cosine Similarity Embeddings Print
+.SH SYNOPSIS
+.B csep
+[\fIOPTIONS\fR] [\fIQUERY\fR] [\fICOMPARISON\fR]
+
+.SH DESCRIPTION
+\fBcsep\fR is a tool used to compute and print the Cosine Similarity between text embeddings.
+
+.SH ARGUMENTS
+.TP
+\fIQUERY\fR
+User search query.
+.TP
+\fICOMPARISON\fR
+If provided, compares the \fBQUERY\fR to this string and returns the cosine similarity score.
+
+.SH OPTIONS
+.TP
+\fB\-f\fR, \fB\--floor\fR \fIFLOOR\fR
+Similarity floor. Any result below this floating-point value will be filtered out from the results.
+.TP
+\fB\-n\fR, \fB\--no-query\fR
+If set, the query will not be printed out with the results.
+.TP
+\fB\-h\fR, \fB\--help\fR
+Prints help information and exits.
+.TP
+\fB\-V\fR, \fB\--version\fR
+Prints version information and exits.
+
+.SH AUTHOR
+Written by Divan Visagie (\fBme@divanv.com\fR).
+
+.SH EXAMPLES
+.TP
+Compare two strings for similarity:
+.B csep "first string" "second string"
+.TP
+Use a similarity floor of 0.5:
+.B csep -f 0.5 "first string" "second string"
+.TP
+Do not print the query with the results:
+.B csep -n "first string" "second string"
+
+.SH SEE ALSO
+For more information, visit the official repository or contact the author.
+
+.SH COPYRIGHT
+Written by Divan Visagie, 2024.
