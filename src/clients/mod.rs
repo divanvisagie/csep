@@ -8,9 +8,22 @@ struct EmbeddingsRequest {
     model: String,
 }
 
+pub enum EmbeddingsClientImpl {
+    Ollama(OllamaEmbeddingsClient),
+}
+
+impl EmbeddingsClient for EmbeddingsClientImpl {
+    fn get_embeddings(&self, text: &String) -> Result<Vec<f32>> {
+        match self {
+            EmbeddingsClientImpl::Ollama(client) => client.get_embeddings(text),
+        }
+    }
+}
+
 pub trait EmbeddingsClient {
     fn get_embeddings(&self, text: &String) -> Result<Vec<f32>>;
 }
+
 
 // Ollama implementation
 pub struct OllamaEmbeddingsClient {

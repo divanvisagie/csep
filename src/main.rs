@@ -1,21 +1,24 @@
 use files::{get_cache_path, read_file_with_fallback};
-use std::{fs, io::{self, BufRead}};
+use std::{
+    fs,
+    io::{self, BufRead},
+};
 
 use crate::{clients::EmbeddingsClient, files::get_all_files_in_directory};
+use anyhow::Result;
 use args::Args;
 use atty::Stream;
 use clap::Parser;
-use clients::OllamaEmbeddingsClient;
+use clients::{EmbeddingsClientImpl, OllamaEmbeddingsClient};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use text_splitter::{ChunkConfig, TextSplitter};
 use tiktoken_rs::cl100k_base;
-use anyhow::Result;
 
-mod files;
 mod args;
 mod clients;
+mod files;
 
 const DEFAULT_FLOOR: f32 = 0.2;
 
@@ -57,12 +60,12 @@ impl PrintableFile {
     }
 }
 
-fn chunk_file_with_embeddings(file: &str, oec: &OllamaEmbeddingsClient) -> Vec<Chunk> {
+fn chunk_file_with_embeddings(file: &str, embeddings_client: &EmbeddingsClientImpl) -> Result<Vec<Chunk>> {
     let text = match read_file_with_fallback(file) {
         Ok(text) => text,
         Err(err) => {
             eprintln!("Error reading file {}: {}", file, err);
-            return Vec::new();
+            return Ok(Vec::new());
         }
     };
 
@@ -71,38 +74,42 @@ fn chunk_file_with_embeddings(file: &str, oec: &OllamaEmbeddingsClient) -> Vec<C
     let file_path = get_cache_path().join(cache_file_name);
 
     if file_path.exists() {
-        let chunks: Vec<Chunk> = bincode::deserialize(&fs::read(file_path).unwrap()).unwrap();
-        return chunks;
+        let chunks: Vec<Chunk> = bincode::deserialize(&fs::read(file_path)?)?;
+        return Ok(chunks);
     }
 
-    let tokenizer = cl100k_base().unwrap();
+    let tokenizer = cl100k_base()?;
     let max_tokens = 100;
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
     let chunks = splitter.chunks(&text).map(|chunk| {
-        let embeddings = oec.get_embeddings(&chunk.to_string()).unwrap_or_default();
+        let embeddings = embeddings_client
+            .get_embeddings(&chunk.to_string())
+            .unwrap_or_default();
         Chunk {
             text: chunk.to_string(),
             embeddings,
         }
     });
 
-    // write to cache
     let chunks: Vec<Chunk> = chunks.collect();
-    // make sure directory exists
-    fs::create_dir_all(get_cache_path()).unwrap();
-    fs::write(file_path, bincode::serialize(&chunks).unwrap()).unwrap();
+    fs::create_dir_all(get_cache_path())?;
+    fs::write(file_path, bincode::serialize(&chunks)?)?;
 
-    chunks
+    Ok(chunks)
 }
 
-fn run_standard(search_phrase: &String, floor: &f32, no_query: &bool) {
-    let oec = OllamaEmbeddingsClient::new();
+fn run_standard(
+    embeddings_client: &EmbeddingsClientImpl,
+    search_phrase: &String,
+    floor: &f32,
+    no_query: &bool,
+) -> Result<()> {
     let search_chunk = Chunk {
         text: search_phrase.clone(),
-        embeddings: oec.get_embeddings(&search_phrase).unwrap(),
+        embeddings: embeddings_client.get_embeddings(&search_phrase)?,
     };
 
-    let current_dir = std::env::current_dir().unwrap().clone();
+    let current_dir = std::env::current_dir()?.clone();
     let current_directory = match current_dir.to_str() {
         Some(dir) => dir,
         None => panic!("Could not get current directory"),
@@ -111,7 +118,13 @@ fn run_standard(search_phrase: &String, floor: &f32, no_query: &bool) {
     let documents = files
         .iter()
         .filter_map(|file| {
-            let chunks = chunk_file_with_embeddings(file, &oec);
+            let chunks = match chunk_file_with_embeddings(file, &embeddings_client) {
+                Ok(chunks) => chunks,
+                Err(err) => {
+                    eprintln!("Error chunking file {}: {}", file, err);
+                    return None;
+                }
+            };
 
             Some(Document {
                 path: file.to_string(),
@@ -123,7 +136,7 @@ fn run_standard(search_phrase: &String, floor: &f32, no_query: &bool) {
     if !no_query {
         println!("Results for search phrase: {}\n", search_phrase);
     }
-    
+
     for document in documents {
         let chunks = document.chunks.iter().filter(|chunk| {
             let similarity = cosine_similarity(&search_chunk.embeddings, &chunk.embeddings);
@@ -133,18 +146,21 @@ fn run_standard(search_phrase: &String, floor: &f32, no_query: &bool) {
             continue;
         }
 
-        let printable_chunks = chunks.map(|chunk| PrintableChunk {
-            chunk: chunk.text.clone(),
-            similarity: cosine_similarity(&search_chunk.embeddings, &chunk.embeddings),
-        }).collect::<Vec<PrintableChunk>>();
+        let printable_chunks = chunks
+            .map(|chunk| PrintableChunk {
+                chunk: chunk.text.clone(),
+                similarity: cosine_similarity(&search_chunk.embeddings, &chunk.embeddings),
+            })
+            .collect::<Vec<PrintableChunk>>();
 
         let printable_file = PrintableFile {
             file: document.path.clone(),
             chunks: printable_chunks,
         };
 
-        printable_file.print();       
+        printable_file.print();
     }
+    Ok(())
 }
 
 pub fn get_stdin() -> String {
@@ -200,6 +216,10 @@ fn main() {
     }
 
     let floor = args.floor.unwrap_or(DEFAULT_FLOOR);
-    run_standard(&search_phrase, &floor, &args.no_query);
+    let oec = OllamaEmbeddingsClient::new();
+    let embeddings_client = EmbeddingsClientImpl::Ollama(oec);
+    match run_standard(&embeddings_client, &search_phrase, &floor, &args.no_query) { 
+        Ok(_) => return,
+        Err(err) => eprintln!("Error while running: {}", err),
+    }
 }
-

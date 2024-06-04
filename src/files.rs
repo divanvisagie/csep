@@ -1,7 +1,6 @@
 use anyhow::Result;
 use std::{
     fs::{self, File},
-    io::Read,
     path::PathBuf,
 };
 
@@ -9,20 +8,29 @@ use ignore::WalkBuilder;
 use memmap2::Mmap;
 
 fn is_binary_file(file: &str) -> bool {
-    const SAMPLE_SIZE: usize = 8000;
-    let mut buffer = [0; SAMPLE_SIZE];
-
-    if let Ok(mut f) = File::open(file) {
-        if let Ok(size) = f.read(&mut buffer) {
-            for byte in &buffer[..size] {
-                if *byte == 0 || (*byte > 127 && byte != &9 && byte != &10 && byte != &13) {
-                    return true;
-                }
-            }
-        }
+    if !file.contains(".") {
+        return true;
     }
 
-    false
+    let banned_extensions = vec![
+        "png", "jpg", "jpeg", "gif", "bmp", "ico", "tiff", "webp", "svg", "mp3", "mp4", "webm",
+        "ogg", "flac", "wav", "avi", "mov", "wmv", "mpg", "flv", "swf", "zip", "gz", "tar", "rar",
+        "7z", "bz2", "xz", "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "eot", "ttf", "woff",
+        "woff2", "otf", "swf", "wasm", "webm", "webp", "mp4", "mp3", "ogg", "flac", "wav", "avi",
+        "mov", "wmv", "mpg", "flv", "swf", "zip", "gz", "tar", "rar", "7z", "bz2", "xz", "pdf",
+        "doc", "docx", "xls", "xlsx", "ppt", "pptx", "eot", "ttf", "woff", "woff2", "otf", "swf",
+        "wasm", "webm", "webp", "mp4", "mp3", "ogg", "flac", "wav", "avi", "mov", "wmv", "mpg",
+        "flv", "swf", "zip", "gz", "tar", "rar", "7z", "bz2", "xz", "pdf", "doc", "docx", "xls",
+        "xlsx", "ppt", "pptx", "eot", "ttf", "woff", "woff2", "otf", "swf", "wasm", "webm", "webp",
+        "mp4", "mp3", "ogg", "flac", "wav", "avi", "mov", "wmv", "mpg", "flv", "swf", "zip", "gz",
+        "tar", "rar", "7z", "bz2", "xz", "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "eot",
+    ];
+
+    if let Some(extension) = file.split('.').last() {
+        return banned_extensions.contains(&extension);
+    } else {
+        return false;
+    }
 }
 
 pub fn get_all_files_in_directory(dir: &str) -> Vec<String> {
@@ -73,6 +81,21 @@ mod tests {
     #[test]
     fn test_get_all_files_in_directory() {
         let files = get_all_files_in_directory("data");
+        // print the list of files
+        for file in &files {
+            println!("{}", file);
+        }
+        assert_eq!(files.contains(&"data/subdir/more.txt".to_string()), true);
+        assert_eq!(files.contains(&"data/typescript.txt".to_string()), true);
+        assert_eq!(files.contains(&"data/rust.txt".to_string()), true);
         assert_eq!(files.len(), 3);
+    }
+
+    #[test]
+    fn test_is_binary() {
+        assert_eq!(is_binary_file("file.png"), true);
+        assert_eq!(is_binary_file("file.txt"), false);
+        assert_eq!(is_binary_file("file.rs"), false);
+        assert_eq!(is_binary_file("file"), true);
     }
 }
