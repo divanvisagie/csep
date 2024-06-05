@@ -55,10 +55,6 @@ pub fn get_all_files_in_directory(dir: &str) -> Vec<String> {
 
     files
 }
-pub fn get_cache_path() -> PathBuf {
-    let tmp_dir = dirs::cache_dir().unwrap();
-    tmp_dir.join("csep")
-}
 
 pub fn read_file_with_fallback(file: &str) -> Result<String> {
     // Try to memory map the file first
