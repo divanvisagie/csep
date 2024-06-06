@@ -1,4 +1,6 @@
+use atty::Stream;
 use rayon::prelude::*;
+use std::io::{self, BufRead};
 
 pub fn cosine_similarity(v1: &Vec<f32>, v2: &Vec<f32>) -> f32 {
     let dot_product = v1.par_iter().zip(v2).map(|(a, b)| a * b).sum::<f32>();

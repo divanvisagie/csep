@@ -1,8 +1,5 @@
 use anyhow::Result;
-use std::{
-    fs::{self, File},
-    path::PathBuf,
-};
+use std::fs::{self, File};
 
 use ignore::WalkBuilder;
 use memmap2::Mmap;
