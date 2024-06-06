@@ -52,3 +52,5 @@ tarball-publish: tarball
 	echo "Sending tarball $$TARBALL to script"; \
 	sh ./scripts/publish_asset.sh $$TARBALL
 
+homebrew:
+	@sh ./scripts/homebrew.sh
