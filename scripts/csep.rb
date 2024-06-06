@@ -1,4 +1,4 @@
-class Cgip < Formula
+class Csep < Formula
   desc "Terminal client for Chat GPT"
   homepage "https://github.com/divanvisagie/csep"
   
