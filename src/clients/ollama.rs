@@ -29,7 +29,7 @@ struct OllamaResponse {
 }
 
 /// Benchmark leaderboard: https://huggingface.co/spaces/mteb/leaderboard
-pub const OLLAMA_MODELS: [&str; 2] = ["all-minilm", "mxbai-embed-large"];
+pub const OLLAMA_MODELS: [&str; 3] = ["all-minilm", "mxbai-embed-large", "nomic-embed-text"];
 
 impl EmbeddingsClient for OllamaEmbeddingsClient {
     fn get_embeddings(&self, text: &String) -> Result<Vec<f32>> {
