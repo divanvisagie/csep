@@ -1,33 +1,28 @@
-use anyhow::Result;
 use crate::{
     chunker::{chunk_file_with_embeddings, Chunk},
     clients::{EmbeddingsClient, EmbeddingsClientImpl},
     files::get_all_files_in_directory,
     utils::cosine_similarity,
 };
-
-struct Document {
-    path: String,
-    pub chunks: Vec<Chunk>,
-}
+use anyhow::Result;
 
 pub struct PrintableChunk {
-    pub chunk: String,
+    file: String,
+    chunk: String,
+    line: usize,
     similarity: f32,
 }
 
-pub struct PrintableFile {
-    file: String,
-    chunks: Vec<PrintableChunk>,
-}
-
-impl PrintableFile {
-    fn print(&self) {
+impl PrintableChunk {
+    pub fn print(&self) {
         println!("file: {}", self.file);
-        for chunk in &self.chunks {
-            println!("chunk: {}", chunk.chunk);
-            println!("similarity: {}\n", chunk.similarity);
-        }
+        println!("chunk: {}", self.chunk);
+        println!("similarity: {}\n", self.similarity);
+    }
+
+    // print in vimgrep compatible format
+    pub fn print_vimgrep(&self) {
+        println!("{}:{}:0 {}", self.file, self.line, self.similarity);
     }
 }
 
@@ -36,8 +31,10 @@ pub fn run(
     search_phrase: &String,
     floor: &f32,
     no_query: &bool,
+    vimgrep: &bool,
 ) -> Result<()> {
     let search_chunk = Chunk {
+        line: 0,
         text: search_phrase.clone(),
         embeddings: embeddings_client.get_embeddings(&search_phrase)?,
     };
@@ -48,7 +45,7 @@ pub fn run(
         None => panic!("Could not get current directory"),
     };
     let files = get_all_files_in_directory(current_directory);
-    let documents = files
+    let printable_chunk = files
         .iter()
         .filter_map(|file| {
             let chunks = match chunk_file_with_embeddings(file, &embeddings_client) {
@@ -59,39 +56,44 @@ pub fn run(
                 }
             };
 
-            Some(Document {
-                path: file.to_string(),
-                chunks,
-            })
-        })
-        .collect::<Vec<Document>>();
+            let printable_chunks = chunks.iter().filter(|chunk| {
+                let similarity = cosine_similarity(&search_chunk.embeddings, &chunk.embeddings);
+                similarity > *floor
+            });
 
-    if !no_query {
+            if printable_chunks.clone().count() == 0 {
+                return None;
+            }
+
+            let mut printable_chunks = printable_chunks
+                .map(|chunk| PrintableChunk {
+                    line: chunk.line,
+                    file: file.to_string(),
+                    chunk: chunk.text.clone(),
+                    similarity: cosine_similarity(&search_chunk.embeddings, &chunk.embeddings),
+                })
+                .collect::<Vec<PrintableChunk>>();
+
+            // sort by similarity descending
+            printable_chunks.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
+
+            Some(printable_chunks)
+        })
+        .collect::<Vec<Vec<PrintableChunk>>>();
+
+    if !no_query && !vimgrep {
         println!("Results for search phrase: {}\n", search_phrase);
     }
 
-    for document in documents {
-        let chunks = document.chunks.iter().filter(|chunk| {
-            let similarity = cosine_similarity(&search_chunk.embeddings, &chunk.embeddings);
-            similarity > *floor
-        });
-        if chunks.clone().count() == 0 {
+    let mut printable_chunk = printable_chunk.iter().flatten().collect::<Vec<&PrintableChunk>>();
+    printable_chunk.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
+    for p in printable_chunk {
+        if *vimgrep {
+            p.print_vimgrep();
             continue;
         }
-
-        let printable_chunks = chunks
-            .map(|chunk| PrintableChunk {
-                chunk: chunk.text.clone(),
-                similarity: cosine_similarity(&search_chunk.embeddings, &chunk.embeddings),
-            })
-            .collect::<Vec<PrintableChunk>>();
-
-        let printable_file = PrintableFile {
-            file: document.path.clone(),
-            chunks: printable_chunks,
-        };
-
-        printable_file.print();
+        p.print();
     }
+
     Ok(())
 }

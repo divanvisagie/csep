@@ -26,6 +26,11 @@ pub struct Args {
     #[arg(short, long)]
     pub list_models: bool,
 
+
+    // Print in vimgrep compatible mode
+    #[arg(short, long)]
+    pub vimgrep: bool,
+
     /// Set the model
     #[arg(short = 'M', long)]
     pub model: Option<String>,

@@ -8,10 +8,12 @@ use anyhow::Result;
 pub fn run(first: String, second: String, model: Option<String>) -> Result<()> {
     let oec = OllamaEmbeddingsClient::new(model);
     let first_chunk = Chunk {
+        line: 0,
         text: first.clone(),
         embeddings: oec.get_embeddings(&first)?,
     };
     let second_chunk = Chunk {
+        line: 0,
         text: second.clone(),
         embeddings: oec.get_embeddings(&second)?,
     };

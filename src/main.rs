@@ -40,7 +40,7 @@ fn main() {
 
     let floor = args.floor.unwrap_or(DEFAULT_FLOOR);
     let embeddings_client = EmbeddingsClientImpl::Ollama(OllamaEmbeddingsClient::new(args.model));
-    match feature::default::run(&embeddings_client, &search_phrase, &floor, &args.no_query) {
+    match feature::default::run(&embeddings_client, &search_phrase, &floor, &args.no_query, &args.vimgrep) {
         Ok(_) => return,
         Err(err) => eprintln!("Error while running: {}", err),
     }

@@ -13,6 +13,7 @@ use crate::{
 
 #[derive(Serialize, Deserialize)]
 pub struct Chunk {
+    pub line: usize,
     pub text: String,
     pub embeddings: Vec<f32>,
 }
@@ -46,14 +47,19 @@ pub fn chunk_file_with_embeddings(
     let tokenizer = cl100k_base()?;
     let max_tokens = 100;
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
+    let mut line_count = 0;
     let chunks = splitter.chunks(&text).map(|chunk| {
+        // count newline instances in chunk
         let embeddings = embeddings_client
             .get_embeddings(&chunk.to_string())
             .unwrap_or_default();
-        Chunk {
+        let to_return = Chunk {
+            line: line_count.clone(),
             text: chunk.to_string(),
             embeddings,
-        }
+        };
+        line_count += chunk.matches('\n').count();
+        to_return
     });
 
     let chunks: Vec<Chunk> = chunks.collect();
