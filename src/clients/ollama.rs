@@ -9,7 +9,8 @@ pub struct OllamaEmbeddingsClient {
     model: String,
 }
 impl OllamaEmbeddingsClient {
-    pub fn new(model: Option<String>) -> Self {
+    pub fn new(model: &Option<String>) -> Self {
+        let model = model.clone();
         OllamaEmbeddingsClient {
             base_url: "http://localhost:11434",
             model: model.unwrap_or("all-minilm".to_string()),

@@ -27,7 +27,7 @@ pub fn chunk_file_with_embeddings(
     file: &str,
     embeddings_client: &EmbeddingsClientImpl,
 ) -> Result<Vec<Chunk>> {
-    let text = match read_file_with_fallback(file) {
+    let file_text = match read_file_with_fallback(file) {
         Ok(text) => text,
         Err(err) => {
             eprintln!("Error reading file {}: {}", file, err);
@@ -35,20 +35,31 @@ pub fn chunk_file_with_embeddings(
         }
     };
 
-    let hash_of_file = Sha256::digest(text.as_bytes());
+    let hash_of_file = Sha256::digest(file_text.as_bytes());
     let cache_file_name = format!("{:x}.cache", hash_of_file);
     let file_path = get_cache_path().join(cache_file_name);
 
     if file_path.exists() {
-        let chunks: Vec<Chunk> = bincode::deserialize(&fs::read(file_path)?)?;
-        return Ok(chunks);
+        match bincode::deserialize(&fs::read(&file_path)?) {
+            Ok(chunks) => {
+                return Ok(chunks);
+            },
+            Err(err) => {
+                eprintln!("Error deserializing cache file {}: {}", file, err);
+                // delete the file if we cant read from it, its probably corrupt
+                match fs::remove_file(&file_path) {
+                    Ok(_) => (),
+                    Err(err) => eprintln!("Error removing cache file {}: {}", file, err),
+                }
+            }
+        };
     }
 
     let tokenizer = cl100k_base()?;
     let max_tokens = 100;
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
     let mut line_count = 0;
-    let chunks = splitter.chunks(&text).map(|chunk| {
+    let chunks = splitter.chunks(&file_text).map(|chunk| {
         // count newline instances in chunk
         let embeddings = embeddings_client
             .get_embeddings(&chunk.to_string())

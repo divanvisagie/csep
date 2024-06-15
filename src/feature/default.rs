@@ -22,7 +22,7 @@ impl PrintableChunk {
 
     // print in vimgrep compatible format
     pub fn print_vimgrep(&self) {
-        println!("{}:{}:0 {}", self.file, self.line, self.similarity);
+        println!("{}:{}:0:{}", self.file, self.line, self.similarity);
     }
 }
 
@@ -32,6 +32,7 @@ pub fn run(
     floor: &f32,
     no_query: &bool,
     vimgrep: &bool,
+    should_print: &bool,
 ) -> Result<()> {
     let search_chunk = Chunk {
         line: 0,
@@ -85,14 +86,19 @@ pub fn run(
         println!("Results for search phrase: {}\n", search_phrase);
     }
 
-    let mut printable_chunk = printable_chunk.iter().flatten().collect::<Vec<&PrintableChunk>>();
-    printable_chunk.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
-    for p in printable_chunk {
-        if *vimgrep {
-            p.print_vimgrep();
-            continue;
+    if *should_print {
+        let mut printable_chunk = printable_chunk
+            .iter()
+            .flatten()
+            .collect::<Vec<&PrintableChunk>>();
+        printable_chunk.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
+        for p in printable_chunk {
+            if *vimgrep {
+                p.print_vimgrep();
+                continue;
+            }
+            p.print();
         }
-        p.print();
     }
 
     Ok(())
