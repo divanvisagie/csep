@@ -46,7 +46,7 @@ pub fn get_all_files_in_directory(dir: &str) -> Vec<String> {
                     }
                 }
             }
-            Err(err) => {
+            Err(_err) => {
                 //eprintln!("ERROR: {:?}", err),
                 // Fail silently , TODO: Add logs here that only print in debug mode
             }

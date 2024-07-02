@@ -29,7 +29,7 @@ pub async fn chunk_file_with_embeddings<'a>(
 ) -> Result<(String, Vec<Chunk>)> {
     let file_text = match read_file_with_fallback(file) {
         Ok(text) => text,
-        Err(err) => {
+        Err(_err) => {
             // eprintln!("Error reading file {}: {}", file, err);
             return Ok((file.to_string(), Vec::new()));
         }
