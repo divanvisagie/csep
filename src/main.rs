@@ -1,9 +1,13 @@
 use args::{Args, SubCommands};
 use clap::Parser;
 use clients::ollama::OLLAMA_MODELS;
-use clients::{ollama::OllamaEmbeddingsClient, EmbeddingsClientImpl};
+use clients::{
+    fastembed::FastEmbeddingsClient, ollama::OllamaEmbeddingsClient, EmbeddingsClientImpl,
+};
 use spinners::{Spinner, Spinners};
 use utils::{cosine_similarity, get_stdin};
+
+use crate::chunker::get_cache_path;
 
 mod args;
 mod chunker;
@@ -13,7 +17,6 @@ mod files;
 mod utils;
 
 const DEFAULT_FLOOR: f32 = 0.2;
-
 
 #[tokio::main]
 async fn main() {
@@ -32,14 +35,23 @@ async fn main() {
     }
 
     let floor = args.floor.unwrap_or(DEFAULT_FLOOR);
-    let embeddings_client = EmbeddingsClientImpl::Ollama(OllamaEmbeddingsClient::new(&args.model));
 
-    // If we are using the build subcommand
+    let embeddings_client =
+        EmbeddingsClientImpl::FastEmbed(FastEmbeddingsClient::new());
+
     if let Some(subcmd) = args.subcmd {
         match subcmd {
             SubCommands::Cache(cache_args) => {
                 if cache_args.clear {
-                    println!("Clearing cache");
+                    let path = get_cache_path();
+                    if path.exists() {
+                        match std::fs::remove_dir_all(path) {
+                            Ok(_) => println!("Cache cleared"),
+                            Err(err) => eprintln!("Error clearing cache: {}", err),
+                        }
+                    } else {
+                        println!("Cache is already clear");
+                    }
                     return;
                 }
                 let mut spinner =

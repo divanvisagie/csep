@@ -44,7 +44,9 @@ pub async fn run(
         text: search_phrase.to_string(),
         embeddings: search_phrase_embeddings.to_owned()
     };
+    
 
+    // Now lets work with the files in the current directory
     let current_dir = std::env::current_dir()?.clone();
     let current_directory = match current_dir.to_str() {
         Some(dir) => dir,

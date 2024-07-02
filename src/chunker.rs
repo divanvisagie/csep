@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use text_splitter::{ChunkConfig, TextSplitter};
 use tiktoken_rs::cl100k_base;
+use tracing::warn;
 
 use crate::{
     clients::{EmbeddingsClient, EmbeddingsClientImpl},
@@ -18,11 +19,13 @@ pub struct Chunk {
     pub embeddings: Vec<f32>,
 }
 
-fn get_cache_path() -> PathBuf {
+pub fn get_cache_path() -> PathBuf {
     let tmp_dir = dirs::cache_dir().unwrap();
     tmp_dir.join("csep")
 }
 
+/// Chunk a file into smaller pieces and get embeddings for each chunk
+/// using TextSplitter and the provided embeddings client
 pub async fn chunk_file_with_embeddings<'a>(
     file: &'a str,
     embeddings_client: &EmbeddingsClientImpl,
@@ -30,7 +33,7 @@ pub async fn chunk_file_with_embeddings<'a>(
     let file_text = match read_file_with_fallback(file) {
         Ok(text) => text,
         Err(_err) => {
-            // eprintln!("Error reading file {}: {}", file, err);
+            warn!("Error reading file {}", file);
             return Ok((file.to_string(), Vec::new()));
         }
     };
@@ -45,11 +48,11 @@ pub async fn chunk_file_with_embeddings<'a>(
                 return Ok((file.to_string(), chunks));
             }
             Err(err) => {
-                eprintln!("Error deserializing cache file {}: {}", file, err);
-                // delete the file if we cant read from it, its probably corrupt
+                warn!("Error deserializing cache file {}: {}", file, err);
+                // Delete the file, if we cant read from it, its probably corrupt
                 match fs::remove_file(&file_path) {
                     Ok(_) => (),
-                    Err(err) => eprintln!("Error removing cache file {}: {}", file, err),
+                    Err(err) => warn!("Error removing cache file {}: {}", file, err),
                 }
             }
         };
