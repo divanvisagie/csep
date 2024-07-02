@@ -35,7 +35,7 @@ pub async fn run(
     should_print: &bool,
 ) -> Result<()> {
     let search_phrase_embeddings = embeddings_client
-        .get_embeddings(search_phrase)
+        .get_embeddings(&[search_phrase])
         .await?;
 
     let search_chunk = Chunk {

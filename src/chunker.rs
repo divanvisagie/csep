@@ -63,7 +63,7 @@ pub async fn chunk_file_with_embeddings<'a>(
     let mut chunks = Vec::new();
 
     for chunk in splitter.chunks(&file_text) {
-        let embeddings = embeddings_client.get_embeddings(chunk).await;
+        let embeddings = embeddings_client.get_embeddings(&[chunk]).await;
 
         let embeddings = match embeddings {
             Ok(embeddings) => embeddings,

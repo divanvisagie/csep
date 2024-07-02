@@ -9,8 +9,8 @@ pub async fn run(first: String, second: String, model: &Option<String>) -> Resul
     let model_clone = model.clone();
     let oec = OllamaEmbeddingsClient::new(&model_clone);
 
-    let first_embeddings = oec.get_embeddings(first.as_str()).await?;
-    let second_embeddings = oec.get_embeddings(second.as_str()).await?;
+    let first_embeddings = oec.get_embeddings(&[first.as_str()]).await?;
+    let second_embeddings = oec.get_embeddings(&[second.as_str()]).await?;
 
     let first_chunk = Chunk {
         line: 0,
