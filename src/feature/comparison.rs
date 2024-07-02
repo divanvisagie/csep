@@ -15,12 +15,12 @@ pub async fn run(first: String, second: String, model: &Option<String>) -> Resul
     let first_chunk = Chunk {
         line: 0,
         text: first.clone(),
-        embeddings: first_embeddings,
+        embeddings: first_embeddings[0].to_owned(),
     };
     let second_chunk = Chunk {
         line: 0,
         text: second.clone(),
-        embeddings: second_embeddings,
+        embeddings: second_embeddings[0].to_owned(),
     };
 
     let similarity = cosine_similarity(&first_chunk.embeddings, &second_chunk.embeddings);

@@ -58,31 +58,23 @@ pub async fn chunk_file_with_embeddings<'a>(
     let tokenizer = cl100k_base()?;
     let max_tokens = 100;
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
-    let mut line_count = 0;
 
-    let mut chunks = Vec::new();
+    let str_chunks: Vec<&str> = splitter.chunks(&file_text).collect();
+    let embeddings_batch = embeddings_client.get_embeddings(&str_chunks[..]).await?;
 
-    for chunk in splitter.chunks(&file_text) {
-        let embeddings = embeddings_client.get_embeddings(&[chunk]).await;
-
-        let embeddings = match embeddings {
-            Ok(embeddings) => embeddings,
-            Err(err) => {
-                eprintln!("Error getting embeddings for chunk: {}", err);
-                continue;
-            }
-        };
-
-        let to_return = Chunk {
-            line: line_count.clone(),
+    let chunks = str_chunks
+        .iter()
+        .zip(embeddings_batch.iter())
+        .enumerate()
+        .map(|(i, (chunk, embeddings))| Chunk {
+            line: i,
             text: chunk.to_string(),
-            embeddings,
-        };
-        line_count += chunk.matches('\n').count();
-        chunks.push(to_return);
-    }
+            embeddings: embeddings.to_owned(),
+        })
+        .collect();
+    
     fs::create_dir_all(get_cache_path())?;
-    fs::write(file_path, bincode::serialize(&chunks)?)?;
+    fs::write(file_path, bincode::serialize(&str_chunks)?)?;
 
     Ok((file.to_string(), chunks))
 }

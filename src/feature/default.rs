@@ -37,11 +37,12 @@ pub async fn run(
     let search_phrase_embeddings = embeddings_client
         .get_embeddings(&[search_phrase])
         .await?;
+    let search_phrase_embeddings = &search_phrase_embeddings[0];
 
     let search_chunk = Chunk {
         line: 0,
         text: search_phrase.to_string(),
-        embeddings: search_phrase_embeddings,
+        embeddings: search_phrase_embeddings.to_owned()
     };
 
     let current_dir = std::env::current_dir()?.clone();
@@ -91,31 +92,6 @@ pub async fn run(
 
         printable_chunk.push(printable_chunks);
     }
-    // for file in files {
-    //     let chunks = chunk_file_with_embeddings(file.as_str(), &embeddings_client).await?;
-    //     let printable_chunks = chunks.iter().filter(|chunk| {
-    //         let similarity = cosine_similarity(&search_chunk.embeddings, &chunk.embeddings);
-    //         similarity > *floor
-    //     });
-    //
-    //     if printable_chunks.clone().count() == 0 {
-    //         continue;
-    //     }
-    //
-    //     let mut printable_chunks = printable_chunks
-    //         .map(|chunk| PrintableChunk {
-    //             line: chunk.line,
-    //             file: file.to_string(),
-    //             chunk: chunk.text.clone(),
-    //             similarity: cosine_similarity(&search_chunk.embeddings, &chunk.embeddings),
-    //         })
-    //         .collect::<Vec<PrintableChunk>>();
-    //
-    //     // sort by similarity descending
-    //     printable_chunks.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
-    //
-    //     printable_chunk.push(printable_chunks);
-    // }
 
     if !no_query && !vimgrep {
         println!("Results for search phrase: {}\n", search_phrase);

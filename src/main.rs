@@ -14,8 +14,13 @@ mod utils;
 
 const DEFAULT_FLOOR: f32 = 0.2;
 
+
 #[tokio::main]
 async fn main() {
+    if cfg!(debug_assertions) {
+        tracing_subscriber::fmt::init();
+    }
+
     let args = Args::parse();
 
     if args.list_models {

@@ -18,7 +18,7 @@ pub enum EmbeddingsClientImpl {
 
 #[async_trait]
 impl EmbeddingsClient for EmbeddingsClientImpl {
-    async fn get_embeddings(&self, text: &[&str]) -> Result<Vec<f32>> {
+    async fn get_embeddings(&self, text: &[&str]) -> Result<Vec<Vec<f32>>> {
         match self {
             EmbeddingsClientImpl::Ollama(client) => client.get_embeddings(text).await,
         }
@@ -27,6 +27,6 @@ impl EmbeddingsClient for EmbeddingsClientImpl {
 
 #[async_trait]
 pub trait EmbeddingsClient {
-    async fn get_embeddings(&self, text: &[&str]) -> Result<Vec<f32>>;
+    async fn get_embeddings(&self, text: &[&str]) -> Result<Vec<Vec<f32>>>;
 }
 
