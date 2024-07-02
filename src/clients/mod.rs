@@ -1,4 +1,5 @@
 use anyhow::Result;
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use self::ollama::OllamaEmbeddingsClient;
@@ -15,15 +16,17 @@ pub enum EmbeddingsClientImpl {
     Ollama(OllamaEmbeddingsClient),
 }
 
+#[async_trait]
 impl EmbeddingsClient for EmbeddingsClientImpl {
-    fn get_embeddings(&self, text: &String) -> Result<Vec<f32>> {
+    async fn get_embeddings(&self, text: String) -> Result<Vec<f32>> {
         match self {
-            EmbeddingsClientImpl::Ollama(client) => client.get_embeddings(text),
+            EmbeddingsClientImpl::Ollama(client) => client.get_embeddings(text).await,
         }
     }
 }
 
+#[async_trait]
 pub trait EmbeddingsClient {
-    fn get_embeddings(&self, text: &String) -> Result<Vec<f32>>;
+    async fn get_embeddings(&self, text: String) -> Result<Vec<f32>>;
 }
 

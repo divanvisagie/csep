@@ -23,7 +23,7 @@ fn get_cache_path() -> PathBuf {
     tmp_dir.join("csep")
 }
 
-pub fn chunk_file_with_embeddings(
+pub async fn chunk_file_with_embeddings(
     file: &str,
     embeddings_client: &EmbeddingsClientImpl,
 ) -> Result<Vec<Chunk>> {
@@ -59,21 +59,29 @@ pub fn chunk_file_with_embeddings(
     let max_tokens = 100;
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
     let mut line_count = 0;
-    let chunks = splitter.chunks(&file_text).map(|chunk| {
-        // count newline instances in chunk
+    
+    let mut chunks = Vec::new();
+
+    for chunk in splitter.chunks(&file_text) {
         let embeddings = embeddings_client
-            .get_embeddings(&chunk.to_string())
-            .unwrap_or_default();
+            .get_embeddings(chunk.to_string().clone()).await;
+
+        let embeddings = match embeddings {
+            Ok(embeddings) => embeddings,
+            Err(err) => {
+                eprintln!("Error getting embeddings for chunk: {}", err);
+                continue;
+            }
+        };
+
         let to_return = Chunk {
             line: line_count.clone(),
             text: chunk.to_string(),
             embeddings,
         };
         line_count += chunk.matches('\n').count();
-        to_return
-    });
-
-    let chunks: Vec<Chunk> = chunks.collect();
+        chunks.push(to_return);
+    }
     fs::create_dir_all(get_cache_path())?;
     fs::write(file_path, bincode::serialize(&chunks)?)?;
 

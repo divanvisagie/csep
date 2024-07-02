@@ -14,7 +14,8 @@ mod utils;
 
 const DEFAULT_FLOOR: f32 = 0.2;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Args::parse();
 
     if args.list_models {
@@ -36,17 +37,20 @@ fn main() {
                     println!("Clearing cache");
                     return;
                 }
-                // if cache_args.build {
-                // }
-                let mut spinner = Spinner::new(Spinners::Dots9, "Building embeddings cache...".into());
-                match feature::default::run(
+                let mut spinner =
+                    Spinner::new(Spinners::Dots9, "Building embeddings cache...".into());
+
+                let run_result = feature::default::run(
                     &embeddings_client,
                     &"".to_string(),
                     &floor,
                     &true,
                     &args.vimgrep,
                     &false,
-                ) {
+                )
+                .await;
+
+                match run_result {
                     Ok(_) => return,
                     Err(err) => eprintln!("Error while running: {}", err),
                 }
@@ -63,20 +67,26 @@ fn main() {
     }
 
     if let Some(comparison) = args.comparison {
-        match feature::comparison::run(search_phrase, comparison, &args.model) {
+        let run_result = feature::comparison::run(search_phrase, comparison, &args.model).await;
+
+        match run_result {
             Ok(_) => return,
             Err(err) => eprintln!("Error while doing comparison: {}", err),
         }
         return;
     }
-    match feature::default::run(
+
+    let run_result = feature::default::run(
         &embeddings_client,
         &search_phrase,
         &floor,
         &args.no_query,
         &args.vimgrep,
         &true,
-    ) {
+    )
+    .await;
+
+    match run_result {
         Ok(_) => return,
         Err(err) => eprintln!("Error while running: {}", err),
     }

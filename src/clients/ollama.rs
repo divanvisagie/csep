@@ -1,6 +1,7 @@
 use tracing::error;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use async_trait::async_trait;  // Add this dependency in your `Cargo.toml`
 
 use super::EmbeddingsClient;
 
@@ -8,6 +9,7 @@ pub struct OllamaEmbeddingsClient {
     base_url: &'static str,
     model: String,
 }
+
 impl OllamaEmbeddingsClient {
     pub fn new(model: &Option<String>) -> Self {
         let model = model.clone();
@@ -32,24 +34,25 @@ struct OllamaResponse {
 /// Benchmark leaderboard: https://huggingface.co/spaces/mteb/leaderboard
 pub const OLLAMA_MODELS: [&str; 3] = ["all-minilm", "mxbai-embed-large", "nomic-embed-text"];
 
+#[async_trait]
 impl EmbeddingsClient for OllamaEmbeddingsClient {
-    fn get_embeddings(&self, text: &String) -> Result<Vec<f32>> {
+    async fn get_embeddings(&self, text: String) -> Result<Vec<f32>> {
         let url = format!("{}/api/embeddings", self.base_url);
-        let client = reqwest::blocking::Client::new();
+        let client = reqwest::Client::new();
 
         let request_body = serde_json::to_string(&OllamaRequest {
             model: self.model.to_string(),
             prompt: text.to_string(),
-        });
+        })?;
 
-        let response = client.post(&url).body(request_body.unwrap()).send();
+        let response = client.post(&url).body(request_body).send().await?;
 
-        let ollama_response = response?.text()?;
+        let ollama_response = response.text().await?;
 
         let response_object: OllamaResponse = match serde_json::from_str(&ollama_response) {
             Ok(object) => object,
             Err(e) => {
-                error!("Error in respone object: {}", e);
+                error!("Error in response object: {}", e);
                 return Err(anyhow::anyhow!("Error in response object"));
             }
         };
