@@ -30,7 +30,7 @@ pub fn chunk_file_with_embeddings(
     let file_text = match read_file_with_fallback(file) {
         Ok(text) => text,
         Err(err) => {
-            eprintln!("Error reading file {}: {}", file, err);
+            // eprintln!("Error reading file {}: {}", file, err);
             return Ok(Vec::new());
         }
     };
