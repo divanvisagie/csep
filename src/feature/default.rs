@@ -28,19 +28,19 @@ impl PrintableChunk {
 
 pub async fn run(
     embeddings_client: &EmbeddingsClientImpl,
-    search_phrase: &String,
+    search_phrase: &str,
     floor: &f32,
     no_query: &bool,
     vimgrep: &bool,
     should_print: &bool,
 ) -> Result<()> {
-    let text = search_phrase.clone();
     let search_phrase_embeddings = embeddings_client
-        .get_embeddings(search_phrase.clone())
+        .get_embeddings(search_phrase)
         .await?;
+
     let search_chunk = Chunk {
         line: 0,
-        text: text.clone(),
+        text: search_phrase.to_string(),
         embeddings: search_phrase_embeddings,
     };
 
@@ -53,9 +53,22 @@ pub async fn run(
 
     let mut printable_chunk = Vec::new();
 
-    for file in files {
-        let chunks = chunk_file_with_embeddings(file.as_str(), &embeddings_client).await?;
-        let printable_chunks = chunks.iter().filter(|chunk| {
+    let chunk_futures: Vec<_> = files.iter().map(|file| {
+         chunk_file_with_embeddings(file.as_str(), embeddings_client)
+    }).collect();
+
+    let chunk_results = futures::future::join_all(chunk_futures).await;
+    
+    for chunk_result in chunk_results {
+        let chunks = match chunk_result {
+            Ok(chunks) => chunks,
+            Err(err) => {
+                eprintln!("Error chunking file: {}", err);
+                continue;
+            }
+        };
+
+        let printable_chunks = chunks.1.iter().filter(|chunk| {
             let similarity = cosine_similarity(&search_chunk.embeddings, &chunk.embeddings);
             similarity > *floor
         });
@@ -67,7 +80,7 @@ pub async fn run(
         let mut printable_chunks = printable_chunks
             .map(|chunk| PrintableChunk {
                 line: chunk.line,
-                file: file.to_string(),
+                file: chunks.0.clone(),
                 chunk: chunk.text.clone(),
                 similarity: cosine_similarity(&search_chunk.embeddings, &chunk.embeddings),
             })
@@ -78,45 +91,34 @@ pub async fn run(
 
         printable_chunk.push(printable_chunks);
     }
-
-    // let printable_chunk = files
-    //     .iter()
-    //     .filter_map(|file| {
-    //         let chunks = match chunk_file_with_embeddings(file, &embeddings_client).await? {
-    //             Ok(chunks) => chunks,
-    //             Err(err) => {
-    //                 eprintln!("Error chunking file {}: {}", file, err);
-    //                 return None;
-    //             }
-    //         };
+    // for file in files {
+    //     let chunks = chunk_file_with_embeddings(file.as_str(), &embeddings_client).await?;
+    //     let printable_chunks = chunks.iter().filter(|chunk| {
+    //         let similarity = cosine_similarity(&search_chunk.embeddings, &chunk.embeddings);
+    //         similarity > *floor
+    //     });
     //
-    //         let printable_chunks = chunks.iter().filter(|chunk| {
-    //             let similarity = cosine_similarity(&search_chunk.embeddings, &chunk.embeddings);
-    //             similarity > *floor
-    //         });
+    //     if printable_chunks.clone().count() == 0 {
+    //         continue;
+    //     }
     //
-    //         if printable_chunks.clone().count() == 0 {
-    //             return None;
-    //         }
+    //     let mut printable_chunks = printable_chunks
+    //         .map(|chunk| PrintableChunk {
+    //             line: chunk.line,
+    //             file: file.to_string(),
+    //             chunk: chunk.text.clone(),
+    //             similarity: cosine_similarity(&search_chunk.embeddings, &chunk.embeddings),
+    //         })
+    //         .collect::<Vec<PrintableChunk>>();
     //
-    //         let mut printable_chunks = printable_chunks
-    //             .map(|chunk| PrintableChunk {
-    //                 line: chunk.line,
-    //                 file: file.to_string(),
-    //                 chunk: chunk.text.clone(),
-    //                 similarity: cosine_similarity(&search_chunk.embeddings, &chunk.embeddings),
-    //             })
-    //             .collect::<Vec<PrintableChunk>>();
+    //     // sort by similarity descending
+    //     printable_chunks.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
     //
-    //         // sort by similarity descending
-    //         printable_chunks.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
-    //
-    //         Some(printable_chunks)
-    //     })
-    //     .collect::<Vec<Vec<PrintableChunk>>>();
+    //     printable_chunk.push(printable_chunks);
+    // }
 
     if !no_query && !vimgrep {
-        println!("Results for search phrase: {}\n", text);
+        println!("Results for search phrase: {}\n", search_phrase);
     }
 
     if *should_print {

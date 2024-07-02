@@ -36,7 +36,7 @@ pub const OLLAMA_MODELS: [&str; 3] = ["all-minilm", "mxbai-embed-large", "nomic-
 
 #[async_trait]
 impl EmbeddingsClient for OllamaEmbeddingsClient {
-    async fn get_embeddings(&self, text: String) -> Result<Vec<f32>> {
+    async fn get_embeddings(&self, text: &str) -> Result<Vec<f32>> {
         let url = format!("{}/api/embeddings", self.base_url);
         let client = reqwest::Client::new();
 

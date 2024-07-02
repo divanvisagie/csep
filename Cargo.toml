@@ -13,6 +13,7 @@ atty = "0.2.14"
 bincode = "1.3.3"
 clap = { version = "4.2.7", features = ["derive"] }
 dirs = "5.0.1"
+futures = "0.3.30"
 ignore = "0.4.22"
 memmap2 = "0.9.4"
 openssl = { version = "0.10.64", features = ["vendored"] }

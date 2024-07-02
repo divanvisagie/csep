@@ -23,15 +23,15 @@ fn get_cache_path() -> PathBuf {
     tmp_dir.join("csep")
 }
 
-pub async fn chunk_file_with_embeddings(
-    file: &str,
+pub async fn chunk_file_with_embeddings<'a>(
+    file: &'a str,
     embeddings_client: &EmbeddingsClientImpl,
-) -> Result<Vec<Chunk>> {
+) -> Result<(String, Vec<Chunk>)> {
     let file_text = match read_file_with_fallback(file) {
         Ok(text) => text,
         Err(err) => {
             // eprintln!("Error reading file {}: {}", file, err);
-            return Ok(Vec::new());
+            return Ok((file.to_string(), Vec::new()));
         }
     };
 
@@ -42,8 +42,8 @@ pub async fn chunk_file_with_embeddings(
     if file_path.exists() {
         match bincode::deserialize(&fs::read(&file_path)?) {
             Ok(chunks) => {
-                return Ok(chunks);
-            },
+                return Ok((file.to_string(), chunks));
+            }
             Err(err) => {
                 eprintln!("Error deserializing cache file {}: {}", file, err);
                 // delete the file if we cant read from it, its probably corrupt
@@ -59,12 +59,11 @@ pub async fn chunk_file_with_embeddings(
     let max_tokens = 100;
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
     let mut line_count = 0;
-    
+
     let mut chunks = Vec::new();
 
     for chunk in splitter.chunks(&file_text) {
-        let embeddings = embeddings_client
-            .get_embeddings(chunk.to_string().clone()).await;
+        let embeddings = embeddings_client.get_embeddings(chunk).await;
 
         let embeddings = match embeddings {
             Ok(embeddings) => embeddings,
@@ -85,5 +84,5 @@ pub async fn chunk_file_with_embeddings(
     fs::create_dir_all(get_cache_path())?;
     fs::write(file_path, bincode::serialize(&chunks)?)?;
 
-    Ok(chunks)
+    Ok((file.to_string(), chunks))
 }
