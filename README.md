@@ -3,6 +3,11 @@
 
 Cosine Similarity Embeddings Print
 
+```
+╭─── ╭────┬───────╮
+│    ╰──╮ ├─  ╭───╯  
+╰───────╯ ╰── ╵
+```
 Like Grep (Global Regular Expression Print) takes a regular expression and
 prints all the lines that have a match in it, Csep (Cosine Similarity Embeddings
 Print) takes an input phrase and prints all the chunks that are similar to it.
