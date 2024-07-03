@@ -5,6 +5,7 @@ use clients::{
     fastembed::FastEmbeddingsClient, ollama::OllamaEmbeddingsClient, EmbeddingsClientImpl,
 };
 use spinners::{Spinner, Spinners};
+use tracing::error;
 use utils::{cosine_similarity, get_stdin};
 
 use crate::chunker::get_cache_path;
@@ -36,8 +37,19 @@ async fn main() {
 
     let floor = args.floor.unwrap_or(DEFAULT_FLOOR);
 
-    let embeddings_client =
-        EmbeddingsClientImpl::FastEmbed(FastEmbeddingsClient::new());
+    let embeddings_client = match args.client {
+        Some(client) => match client.as_str() {
+            "ollama" => {
+                EmbeddingsClientImpl::Ollama(OllamaEmbeddingsClient::new(&args.model))
+            }
+            "fastembed" => EmbeddingsClientImpl::FastEmbed(FastEmbeddingsClient::new()),
+            _ => {
+                error!("Invalid client: {}", client);
+                return;
+            }
+        },
+        None => EmbeddingsClientImpl::FastEmbed(FastEmbeddingsClient::new()),
+    };
 
     if let Some(subcmd) = args.subcmd {
         match subcmd {

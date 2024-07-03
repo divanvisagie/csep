@@ -24,6 +24,10 @@ pub fn get_cache_path() -> PathBuf {
     tmp_dir.join("csep")
 }
 
+pub fn count_lines_in_text(text: &str) -> usize {
+    text.lines().count()
+}
+
 /// Chunk a file into smaller pieces and get embeddings for each chunk
 /// using TextSplitter and the provided embeddings client
 pub async fn chunk_file_with_embeddings<'a>(
@@ -65,19 +69,35 @@ pub async fn chunk_file_with_embeddings<'a>(
     let str_chunks: Vec<&str> = splitter.chunks(&file_text).collect();
     let embeddings_batch = embeddings_client.get_embeddings(&str_chunks[..]).await?;
 
+    let mut lc = 1;
     let chunks = str_chunks
         .iter()
         .zip(embeddings_batch.iter())
         .enumerate()
-        .map(|(i, (chunk, embeddings))| Chunk {
-            line: i,
-            text: chunk.to_string(),
-            embeddings: embeddings.to_owned(),
+        .map(|(_i, (chunk, embeddings))| {
+            lc += count_lines_in_text(chunk);
+            Chunk {
+                line: lc,
+                text: chunk.to_string(),
+                embeddings: embeddings.to_owned(),
+            }
         })
         .collect();
-    
+
     fs::create_dir_all(get_cache_path())?;
-    fs::write(file_path, bincode::serialize(&str_chunks)?)?;
+    fs::write(file_path, bincode::serialize(&chunks)?)?;
 
     Ok((file.to_string(), chunks))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn test_count_lines_in_text() {
+        let text = "Hello\nWorld\n";
+        assert_eq!(count_lines_in_text(text), 2);
+    }
+}
+

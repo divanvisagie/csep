@@ -27,7 +27,7 @@ pub struct Args {
     pub list_models: bool,
 
 
-    // Print in vimgrep compatible mode
+    /// Print in vimgrep compatible mode
     #[arg(short, long)]
     pub vimgrep: bool,
 
@@ -35,8 +35,13 @@ pub struct Args {
     #[arg(short = 'M', long)]
     pub model: Option<String>,
 
+    /// Set whether to use the ollama or fastembed
+    #[arg(short, long)]
+    pub client: Option<String>,
+
     #[command(subcommand)]
     pub subcmd: Option<SubCommands>
+
 }
 
 #[derive(Parser, Debug)]
