@@ -20,9 +20,14 @@ impl PrintableChunk {
         println!("similarity: {}\n", self.similarity);
     }
 
+
     // print in vimgrep compatible format
     pub fn print_vimgrep(&self) {
-        println!("{}:{}:0:{}", self.file, self.line, self.similarity);
+        println!("{}:{}:0:", self.file, self.line);
+        // for lines in chunk
+        for chunk in self.chunk.lines() {
+            println!("  | {}", chunk);
+        }
     }
 }
 

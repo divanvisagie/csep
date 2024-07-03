@@ -59,7 +59,7 @@ async fn main() {
                     if path.exists() {
                         match std::fs::remove_dir_all(path) {
                             Ok(_) => println!("Cache cleared"),
-                            Err(err) => eprintln!("Error clearing cache: {}", err),
+                            Err(err) => error!("Error clearing cache: {}", err),
                         }
                     } else {
                         println!("Cache is already clear");
