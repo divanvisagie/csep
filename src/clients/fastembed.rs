@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 
 use rayon::prelude::*;
@@ -10,11 +12,17 @@ pub struct FastEmbeddingsClient {
     model: TextEmbedding
 }
 
+pub fn get_cache_path() -> PathBuf {
+    let tmp_dir = dirs::data_dir().unwrap();
+    tmp_dir.join("csep").join("models")
+}
+
 impl FastEmbeddingsClient {
     pub fn new() -> Self {
         let model = TextEmbedding::try_new(InitOptions {
             model_name: EmbeddingModel::AllMiniLML6V2,
             show_download_progress: true,
+            cache_dir: get_cache_path(),
             ..Default::default()
         });
         let model = model.unwrap();

@@ -21,7 +21,7 @@ pub struct Chunk {
 
 pub fn get_cache_path() -> PathBuf {
     let tmp_dir = dirs::cache_dir().unwrap();
-    tmp_dir.join("csep")
+    tmp_dir.join("csep").join("embeddings")
 }
 
 pub fn count_lines_in_text(text: &str) -> usize {
