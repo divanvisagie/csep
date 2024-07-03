@@ -9,11 +9,11 @@ Print) takes an input phrase and prints all the chunks that are similar to it.
 
 The goal of this project is to give users command line access to semantic search
 in the same way that grep is used for regular expressions. This not only gives
-you full control over a command line semantic search on any unix like system,
-but also allows you to use it in scripts and pipelines, if you combine it with a
+you a command line semantic search tool on any unix like system,
+but also allows you to use it in scripts and pipelines. If you combine it with a
 command line llm tool like
-[chat-gipity](https://github.com/divanvisagie/chat-gipity) or Ollama you could
-even potentially perform rag in a simple unix shell script.
+[chat-gipity](https://github.com/divanvisagie/chat-gipity) or [Ollama](https://ollama.com/) you could
+even potentially perform [RAG](https://www.wikiwand.com/en/Prompt_engineering#Retrieval-augmented_generation) in a simple unix shell script.
 
 ## Installation
 You will need to install ollama and pull the all-minilm model in order for csep
