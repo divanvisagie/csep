@@ -1,4 +1,4 @@
-.TH CSEP 1 "June 6, 2024" "1.0" "Cosine Similarity Embeddings Print"
+.TH CSEP 1 "July 3, 2024" "0.1.8" "Cosine Similarity Embeddings Print"
 .SH NAME
 csep \- Cosine Similarity Embeddings Print
 .SH SYNOPSIS
@@ -6,7 +6,9 @@ csep \- Cosine Similarity Embeddings Print
 [\fIOPTIONS\fR] [\fIQUERY\fR] [\fICOMPARISON\fR]
 
 .SH DESCRIPTION
-\fBcsep\fR is a tool used to compute and print the Cosine Similarity between text embeddings.
+\fBcsep\fR is a tool used to compute and print the Cosine Similarity between text embeddings. 
+By default it prints in a format more suitable for Large Language Models but --vimgrep can 
+be used for a more human readable format as well as for use in the vim quickfix window.
 
 .SH ARGUMENTS
 .TP
@@ -24,6 +26,18 @@ Similarity floor. Any result below this floating-point value will be filtered ou
 \fB\-n\fR, \fB\--no-query\fR
 If set, the query will not be printed out with the results.
 .TP
+\fB\-l\fR, \fB\--list-models\fR
+List the available embedding models.
+.TP
+\fB\-v\fR, \fB\--vimgrep\fR
+Print in vimgrep compatible mode.
+.TP
+\fB\-M\fR, \fB\--model\fR \fIMODEL\fR
+Set the model.
+.TP
+\fB\-c\fR, \fB\--client\fR \fICLIENT\fR
+Set whether to use the ollama or fastembed client.
+.TP
 \fB\-h\fR, \fB\--help\fR
 Prints help information and exits.
 .TP
@@ -40,6 +54,18 @@ Compare two strings for similarity:
 .TP
 Use a similarity floor of 0.5:
 .B csep -f 0.5 "first string" "second string"
+.TP
+List the available embedding models:
+.B csep --list-models
+.TP
+Print in vimgrep compatible mode:
+.B csep --vimgrep
+.TP
+Set the model to "model_name":
+.B csep --model model_name
+.TP
+Set the client to "ollama":
+.B csep --client ollama
 .TP
 Do not print the query with the results:
 .B csep -n "first string" "second string"

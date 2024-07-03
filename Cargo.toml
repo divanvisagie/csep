@@ -1,6 +1,6 @@
 [package]
 name = "csep"
-version = "0.1.7"
+version = "0.1.8"
 edition = "2021"
 authors = ["Divan Visagie <me@divanv.com>"]
 license = "GPL-2.0"

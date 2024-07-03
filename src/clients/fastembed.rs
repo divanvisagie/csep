@@ -12,7 +12,6 @@ pub struct FastEmbeddingsClient {
 
 impl FastEmbeddingsClient {
     pub fn new() -> Self {
-        // With custom InitOptions
         let model = TextEmbedding::try_new(InitOptions {
             model_name: EmbeddingModel::AllMiniLML6V2,
             show_download_progress: true,
@@ -29,11 +28,9 @@ impl FastEmbeddingsClient {
 #[async_trait]
 impl EmbeddingsClient for FastEmbeddingsClient {
     async fn get_embeddings(&self, text: &[&str]) -> Result<Vec<Vec<f32>>> {
-
-        // get documents from text param
         let documents = text.par_iter().map(|&t| t.to_string()).collect::<Vec<String>>();
 
-        // Generate embeddings with the default batch size, 256
+        // Default batch size, 256 which is used if we pass None
         let embeddings = self.model.embed(documents, None)?;
 
         Ok(embeddings)
