@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use crate::{
     chunker::{chunk_file_with_embeddings, Chunk},
     clients::{EmbeddingsClient, EmbeddingsClientImpl},
@@ -61,7 +62,7 @@ pub async fn run(
 
     let mut printable_chunk = Vec::new();
 
-    let chunk_futures: Vec<_> = files.iter().map(|file| {
+    let chunk_futures: Vec<_> = files.par_iter().map(|file| {
          chunk_file_with_embeddings(file.as_str(), embeddings_client)
     }).collect();
 
@@ -76,7 +77,7 @@ pub async fn run(
             }
         };
 
-        let printable_chunks = chunks.1.iter().filter(|chunk| {
+        let printable_chunks = chunks.1.par_iter().filter(|chunk| {
             let similarity = cosine_similarity(&search_chunk.embeddings, &chunk.embeddings);
             similarity > *floor
         });
@@ -94,7 +95,7 @@ pub async fn run(
             })
             .collect::<Vec<PrintableChunk>>();
 
-        // sort by similarity descending
+        // Sort by similarity descending
         printable_chunks.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
 
         printable_chunk.push(printable_chunks);
@@ -106,7 +107,7 @@ pub async fn run(
 
     if *should_print {
         let mut printable_chunk = printable_chunk
-            .iter()
+            .par_iter()
             .flatten()
             .collect::<Vec<&PrintableChunk>>();
         printable_chunk.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
