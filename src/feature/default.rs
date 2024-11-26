@@ -1,6 +1,6 @@
 use rayon::prelude::*;
 use crate::{
-    chunker::{chunk_file_with_embeddings, Chunk},
+    chunker::{get_chunks_and_embeddings_or_load_from_cache, Chunk},
     clients::{EmbeddingsClient, EmbeddingsClientImpl},
     files::get_all_files_in_directory,
     utils::cosine_similarity,
@@ -63,7 +63,7 @@ pub async fn run(
     let mut printable_chunk = Vec::new();
 
     let chunk_futures: Vec<_> = files.par_iter().map(|file| {
-         chunk_file_with_embeddings(file.as_str(), embeddings_client)
+         get_chunks_and_embeddings_or_load_from_cache(file.as_str(), embeddings_client)
     }).collect();
 
     let chunk_results = futures::future::join_all(chunk_futures).await;
