@@ -19,12 +19,9 @@ pub fn get_cache_path() -> PathBuf {
 
 impl FastEmbeddingsClient {
     pub fn new() -> Self {
-        let model = TextEmbedding::try_new(InitOptions {
-            model_name: EmbeddingModel::AllMiniLML6V2,
-            show_download_progress: true,
-            cache_dir: get_cache_path(),
-            ..Default::default()
-        });
+        
+        let init_options = InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_show_download_progress(true).with_cache_dir(get_cache_path());
+        let model = TextEmbedding::try_new(init_options);
         let model = model.unwrap();
         
         FastEmbeddingsClient {

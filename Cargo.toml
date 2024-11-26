@@ -7,25 +7,25 @@ license = "GPL-2.0"
 description = "Cosine Similarity Embeddings Print"
 
 [dependencies]
-anyhow = "1.0.86"
-async-trait = "0.1.80"
+anyhow = "1.0.93"
+async-trait = "0.1.83"
 atty = "0.2.14"
 bincode = "1.3.3"
-clap = { version = "4.2.7", features = ["derive"] }
+clap = { version = "4.5.21", features = ["derive"] }
 dirs = "5.0.1"
-fastembed = "3.7.0"
-futures = "0.3.30"
-ignore = "0.4.22"
-memmap2 = "0.9.4"
-openssl = { version = "0.10.64", features = ["vendored"] }
+fastembed = "4.2.1"
+futures = "0.3.31"
+ignore = "0.4.23"
+memmap2 = "0.9.5"
+openssl = { version = "0.10.68", features = ["vendored"] }
 rayon = "1.10.0"
-reqwest = { version = "0.11" }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+reqwest = { version = "0.12.9" }
+serde = { version = "1.0.215", features = ["derive"] }
+serde_json = "1.0.133"
 sha2 = "0.10.8"
 spinners = "4.1.1"
-text-splitter = { version = "0.12.1", features = ["tiktoken-rs"] }
-tiktoken-rs = "0.5.8"
-tokio = { version = "1.38.0", features = ["full"] }
-tracing = "0.1"
+text-splitter = { version = "0.18.1", features = ["tiktoken-rs"] }
+tiktoken-rs = "0.6.0"
+tokio = { version = "1.41.1", features = ["full"] }
+tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
