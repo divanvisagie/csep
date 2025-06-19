@@ -28,6 +28,10 @@ impl FastEmbeddingsClient {
             model
         }
     }
+
+    pub fn model_name(&self) -> &str {
+        "all-MiniLM-L6-v2"
+    }
 }
 
 #[async_trait]

@@ -18,6 +18,10 @@ impl OllamaEmbeddingsClient {
             model: model.unwrap_or("all-minilm".to_string()),
         }
     }
+
+    pub fn model_name(&self) -> String {
+        self.model.clone()
+    }
 }
 
 #[derive(Debug, Serialize)]

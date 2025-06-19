@@ -20,6 +20,15 @@ pub enum EmbeddingsClientImpl {
     FastEmbed(FastEmbeddingsClient),
 }
 
+impl EmbeddingsClientImpl {
+    pub fn model_name(&self) -> String {
+        match self {
+            EmbeddingsClientImpl::Ollama(client) => client.model_name(),
+            EmbeddingsClientImpl::FastEmbed(client) => client.model_name().to_string(),
+        }
+    }
+}
+
 #[async_trait]
 impl EmbeddingsClient for EmbeddingsClientImpl {
     async fn get_embeddings(&self, text: &[&str]) -> Result<Vec<Vec<f32>>> {

@@ -8,7 +8,7 @@ use spinners::{Spinner, Spinners};
 use tracing::error;
 use utils::{cosine_similarity, get_stdin};
 
-use crate::chunker::get_cache_path;
+use crate::cache::db::get_db_path;
 
 mod args;
 mod chunker;
@@ -55,9 +55,9 @@ async fn main() {
         match subcmd {
             SubCommands::Cache(cache_args) => {
                 if cache_args.clear {
-                    let path = get_cache_path();
+                    let path = get_db_path();
                     if path.exists() {
-                        match std::fs::remove_dir_all(path) {
+                        match std::fs::remove_file(&path) {
                             Ok(_) => println!("Cache cleared"),
                             Err(err) => error!("Error clearing cache: {}", err),
                         }

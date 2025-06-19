@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf};
+use std::fs;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -8,6 +8,7 @@ use tiktoken_rs::cl100k_base;
 use tracing::warn;
 
 use crate::{
+    cache::db::CacheDB,
     clients::{EmbeddingsClient, EmbeddingsClientImpl},
     files::read_file_with_fallback,
 };
@@ -19,10 +20,6 @@ pub struct Chunk {
     pub embeddings: Vec<f32>,
 }
 
-pub fn get_cache_path() -> PathBuf {
-    let tmp_dir = dirs::cache_dir().unwrap();
-    tmp_dir.join("csep").join("embeddings")
-}
 
 pub fn count_lines_in_text(text: &str) -> usize {
     text.lines().count()
@@ -43,23 +40,12 @@ pub async fn get_chunks_and_embeddings_or_load_from_cache<'a>(
     };
 
     let hash_of_file = Sha256::digest(file_text.as_bytes());
-    let cache_file_name = format!("{:x}.cache", hash_of_file);
-    let file_path = get_cache_path().join(cache_file_name);
+    let hash_string = format!("{:x}", hash_of_file);
+    let db = CacheDB::new()?;
+    let model = embeddings_client.model_name();
 
-    if file_path.exists() {
-        match bincode::deserialize(&fs::read(&file_path)?) {
-            Ok(chunks) => {
-                return Ok((file.to_string(), chunks));
-            }
-            Err(err) => {
-                warn!("Error deserializing cache file {}: {}", file, err);
-                // Delete the file, if we cant read from it, its probably corrupt
-                match fs::remove_file(&file_path) {
-                    Ok(_) => (),
-                    Err(err) => warn!("Error removing cache file {}: {}", file, err),
-                }
-            }
-        };
+    if let Some(chunks) = db.get_chunks(file, &hash_string, &model)? {
+        return Ok((file.to_string(), chunks));
     }
 
     let tokenizer = cl100k_base()?;
@@ -84,8 +70,7 @@ pub async fn get_chunks_and_embeddings_or_load_from_cache<'a>(
         })
         .collect();
 
-    fs::create_dir_all(get_cache_path())?;
-    fs::write(file_path, bincode::serialize(&chunks)?)?;
+    db.upsert_chunks(file, &hash_string, &model, &chunks)?;
 
     Ok((file.to_string(), chunks))
 }
