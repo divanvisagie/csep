@@ -44,6 +44,17 @@ Prints help information and exits.
 \fB\-V\fR, \fB\--version\fR
 Prints version information and exits.
 
+.SH CACHE COMMANDS
+.TP
+.B csep cache --build
+Build or refresh the embeddings cache for the current directory.
+.TP
+.B csep cache --clear
+Remove all cached embeddings.
+.TP
+.B csep cache --prune
+Prune stale entries from the cache.
+
 .SH AUTHOR
 Written by Divan Visagie (\fBme@divanv.com\fR).
 
@@ -69,6 +80,15 @@ Set the client to "ollama":
 .TP
 Do not print the query with the results:
 .B csep -n "first string" "second string"
+.TP
+Build an embeddings cache:
+.B csep cache --build
+.TP
+Clear the cache completely:
+.B csep cache --clear
+.TP
+Prune stale cache entries:
+.B csep cache --prune
 
 .SH SEE ALSO
 For more information, visit the official repository or contact the author.

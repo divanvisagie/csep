@@ -40,3 +40,25 @@ ollama pull all-minilm
 ```
 
 Per embedding, fastembed is actually much slower, but due to the overhead of making requests to ollama, for large directories, the embeddings cache builds much faster when using fastembed.
+
+## Embeddings cache
+
+Csep stores chunk embeddings in a SQLite database located under your system
+cache directory (for example `~/.cache/csep`). Each embedding model has its own
+database file so caches do not clash when you switch models. Performing a
+search automatically prunes the cache by removing records for files that no
+longer exist or that have changed since they were cached.
+
+The cache can be explicitly managed with the `csep cache` subcommand:
+
+```sh
+# build or refresh the cache for the current directory
+csep cache --build
+
+# remove any stale entries without deleting the database
+csep cache --prune
+
+# delete the cache completely
+csep cache --clear
+```
+
