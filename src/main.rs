@@ -45,12 +45,8 @@ async fn main() {
             &config_default_model
         };
 
-        println!("Current model: {}", current_model);
-        if current_model == "all-minilm-l6-v2" {
-            println!("(default)");
-        } else {
-            println!("(configured)");
-        }
+        // Green for current model
+        println!("\x1b[32mCurrent model: {}\x1b[0m", current_model);
         println!();
         println!("Available FastEmbed models:");
         
@@ -65,32 +61,18 @@ async fn main() {
             "DIM".to_string(),
         ]);
         
-        // Add model rows with markers
+        // Add model rows
         let models = clients::get_available_models();
         for model in models {
-            let marker = if model.name == current_model {
-                "← CURRENT"
-            } else if model.name == "all-minilm-l6-v2" {
-                "← DEFAULT"
-            } else {
-                ""
-            };
-            
-            let mut row = vec![
+            let row = vec![
                 model.name.to_string(),
                 model.description.to_string(),
                 model.category.to_string(),
                 model.dimensions.to_string(),
             ];
-            
-            // Add marker if not empty
-            if !marker.is_empty() {
-                row.push(marker.to_string());
-            }
-            
             table_data.push(row);
         }
-        
+
         let headers = vec![
             "NAME".to_string(),
             "DESCRIPTION".to_string(),
@@ -103,10 +85,25 @@ async fn main() {
             &headers,
             &rows
         );
-        print!("{}", table_output);
-        println!("\nUse --model <name> to select a specific model");
-        println!("Default: all-minilm-l6-v2 (fast, general-purpose)");
-        println!("Recommended: bge-small-en-v1.5 (balanced, modern)");
+        
+        const DEFAULT_MODEL: &str = "all-minilm-l6-v2";
+
+        // Highlight rows: green for current, blue for default
+        let highlighted_output: String = table_output
+            .lines()
+            .map(|line| {
+                if line.starts_with(current_model) {
+                    format!("\x1b[32m{}\x1b[0m", line) // Green for current
+                } else if line.starts_with(DEFAULT_MODEL) && current_model != DEFAULT_MODEL {
+                    format!("\x1b[34m{}\x1b[0m", line) // Blue for default
+                } else {
+                    line.to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        println!("{}", highlighted_output);
+        println!("\n\x1b[32m■\x1b[0m Current   \x1b[34m■\x1b[0m Default");
         return;
     }
 
