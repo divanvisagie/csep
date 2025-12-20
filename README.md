@@ -20,6 +20,14 @@ command line llm tool like
 [chat-gipity](https://github.com/divanvisagie/chat-gipity) or [Ollama](https://ollama.com/) you could
 even potentially perform [RAG](https://www.wikiwand.com/en/Prompt_engineering#Retrieval-augmented_generation) in a simple unix shell script.
 
+## How it works
+
+csep searches files by semantic meaning, so results can match the intent of a query even when the exact words are not present. Embeddings can take time to compute, so csep caches them per directory. The cache is built automatically on first run in a directory, or you can prepare it ahead of time:
+
+```sh
+csep cache --build
+```
+
 ## Usage
 
 Default output mirrors rg: file heading followed by line:match entries, with exact query tokens highlighted.

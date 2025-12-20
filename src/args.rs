@@ -1,7 +1,11 @@
 use clap::{command, Parser};
 
 #[derive(Parser, Debug)]
-#[command(author, version, about)]
+#[command(
+    author,
+    version,
+    about = "csep (Cosine Similarity Embeddings Print) searches files by semantic meaning, similar to how grep searches by regex. Use it when you want content-based matches even if the exact words don't appear.\n\nEmbeddings can take time to compute, so csep caches them per directory. The cache is built automatically on first run in a directory, or you can prepare it with `csep cache --build`."
+)]
 pub struct Args {
     /// User search query
     #[arg(index = 1)]
