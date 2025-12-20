@@ -70,16 +70,7 @@ pub fn format_table_with_headers(headers: &[String], rows: &[Vec<String>]) -> St
         }
     }
     result.push('\n');
-    
-    // Format separator line
-    for (i, width) in max_widths.iter().enumerate() {
-        result.push_str(&"-".repeat(*width));
-        if i < max_widths.len() - 1 {
-            result.push_str("--");
-        }
-    }
-    result.push('\n');
-    
+
     // Format data rows
     for row in rows {
         for (i, cell) in row.iter().enumerate() {
@@ -112,7 +103,7 @@ mod tests {
         
         let widths = calculate_column_widths(&data);
         assert_eq!(widths[0], 17); // "bge-small-en-v1.5".len()
-        assert_eq!(widths[1], 19); // "Modern balanced model".len()
+        assert_eq!(widths[1], 21); // "Modern balanced model".len()
     }
     
     #[test]

@@ -45,11 +45,6 @@ async fn main() {
             &config_default_model
         };
 
-        // Green for current model
-        println!("\x1b[32mCurrent model: {}\x1b[0m", current_model);
-        println!();
-        println!("Available FastEmbed models:");
-        
         // Prepare table data
         let mut table_data = vec![];
         
