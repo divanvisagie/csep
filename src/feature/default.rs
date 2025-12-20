@@ -1,4 +1,6 @@
 use rayon::prelude::*;
+use std::collections::HashSet;
+use std::path::Path;
 use crate::{
     chunker::{get_chunks_and_embeddings_or_load_from_cache, Chunk},
     clients::{EmbeddingsClient, EmbeddingsClientImpl},
@@ -9,37 +11,134 @@ use anyhow::Result;
 
 pub struct PrintableChunk {
     file: String,
-    chunk: String,
     line: usize,
+    chunk: String,
+    display_line: String,
     similarity: f32,
 }
 
 impl PrintableChunk {
-    pub fn print(&self) {
-        println!("file: {}", self.file);
-        println!("chunk: {}", self.chunk);
-        println!("similarity: {}\n", self.similarity);
-    }
-
-
     // print in vimgrep compatible format
     pub fn print_vimgrep(&self) {
-        println!("{}:{}:0:", self.file, self.line);
-        // for lines in chunk
-        for chunk in self.chunk.lines() {
-            println!("  | {}", chunk);
+        println!("{}:{}:0:{}", self.file, self.line, self.display_line);
+    }
+
+    pub fn print_file_heading(&self, colorize: bool) {
+        if colorize {
+            let reset = "\x1b[0m";
+            let file_color = "\x1b[31m";
+            println!("{}{}{}", file_color, self.file, reset);
+        } else {
+            println!("{}", self.file);
         }
     }
+
+    pub fn print_match_line(&self, colorize: bool, token_set: &HashSet<String>) {
+        if colorize {
+            let reset = "\x1b[0m";
+            let line_color = "\x1b[32m";
+            let match_color = "\x1b[31m";
+            let highlighted = highlight_line(&self.display_line, token_set, match_color, reset);
+            println!(
+                "{}{}{}:{}",
+                line_color,
+                self.line,
+                reset,
+                highlighted
+            );
+        } else {
+            println!("{}:{}", self.line, self.display_line);
+        }
+    }
+}
+
+fn tokenize_query(query: &str) -> Vec<String> {
+    query
+        .split_whitespace()
+        .map(|token| token.to_lowercase())
+        .filter(|token| !token.is_empty())
+        .collect()
+}
+
+fn is_word_char(ch: char) -> bool {
+    ch.is_ascii_alphanumeric() || ch == '_'
+}
+
+fn highlight_line(
+    line: &str,
+    token_set: &HashSet<String>,
+    match_color: &str,
+    reset: &str,
+) -> String {
+    if token_set.is_empty() {
+        return line.to_string();
+    }
+
+    let mut output = String::with_capacity(line.len());
+    let mut iter = line.char_indices().peekable();
+    while let Some((idx, ch)) = iter.next() {
+        if is_word_char(ch) {
+            let start = idx;
+            let mut end = idx + ch.len_utf8();
+            while let Some(&(next_idx, next_ch)) = iter.peek() {
+                if is_word_char(next_ch) {
+                    iter.next();
+                    end = next_idx + next_ch.len_utf8();
+                } else {
+                    break;
+                }
+            }
+            let word = &line[start..end];
+            if token_set.contains(&word.to_lowercase()) {
+                output.push_str(match_color);
+                output.push_str(word);
+                output.push_str(reset);
+            } else {
+                output.push_str(word);
+            }
+        } else {
+            output.push(ch);
+        }
+    }
+    output
+}
+
+fn select_display_line(query_tokens: &[String], chunk: &Chunk) -> (usize, String) {
+    let lines: Vec<&str> = chunk.text.lines().collect();
+    if lines.is_empty() {
+        return (chunk.line, String::new());
+    }
+
+    let mut best_idx = 0usize;
+    let mut best_score = 0usize;
+    for (idx, line) in lines.iter().enumerate() {
+        let lower = line.to_lowercase();
+        let score = query_tokens
+            .iter()
+            .filter(|token| lower.contains(token.as_str()))
+            .count();
+        if score > best_score {
+            best_score = score;
+            best_idx = idx;
+        }
+    }
+
+    let line_count = lines.len();
+    let start_line = chunk.line.saturating_sub(line_count);
+    let line_number = start_line + best_idx;
+    (line_number, lines[best_idx].to_string())
 }
 
 pub async fn run(
     embeddings_client: &EmbeddingsClientImpl,
     search_phrase: &str,
     floor: &f32,
-    no_query: &bool,
+    _no_query: &bool,
     vimgrep: &bool,
     should_print: &bool,
 ) -> Result<()> {
+    let query_tokens = tokenize_query(search_phrase);
+    let token_set: HashSet<String> = query_tokens.iter().cloned().collect();
     let search_phrase_embeddings = embeddings_client
         .get_embeddings(&[search_phrase])
         .await?;
@@ -87,22 +186,23 @@ pub async fn run(
         }
 
         let mut printable_chunks = printable_chunks
-            .map(|chunk| PrintableChunk {
-                line: chunk.line,
-                file: chunks.0.clone(),
-                chunk: chunk.text.clone(),
-                similarity: cosine_similarity(&search_chunk.embeddings, &chunk.embeddings),
+            .map(|chunk| {
+                let (line_number, display_line) = select_display_line(&query_tokens, chunk);
+                PrintableChunk {
+                    line: line_number,
+                    file: Path::new(&chunks.0)
+                        .strip_prefix(current_directory)
+                        .unwrap_or(Path::new(&chunks.0))
+                        .to_string_lossy()
+                        .to_string(),
+                    chunk: chunk.text.clone(),
+                    display_line,
+                    similarity: cosine_similarity(&search_chunk.embeddings, &chunk.embeddings),
+                }
             })
             .collect::<Vec<PrintableChunk>>();
 
-        // Sort by similarity descending
-        printable_chunks.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
-
         printable_chunk.push(printable_chunks);
-    }
-
-    if !no_query && !vimgrep {
-        println!("Results for search phrase: {}\n", search_phrase);
     }
 
     if *should_print {
@@ -110,13 +210,27 @@ pub async fn run(
             .par_iter()
             .flatten()
             .collect::<Vec<&PrintableChunk>>();
-        printable_chunk.sort_by(|a, b| b.similarity.partial_cmp(&a.similarity).unwrap());
+        printable_chunk.sort_by(|a, b| {
+            a.file
+                .cmp(&b.file)
+                .then_with(|| a.line.cmp(&b.line))
+                .then_with(|| b.similarity.partial_cmp(&a.similarity).unwrap())
+        });
+        let colorize = !vimgrep && atty::is(atty::Stream::Stdout);
+        let mut last_file: Option<&str> = None;
         for p in printable_chunk {
             if *vimgrep {
                 p.print_vimgrep();
                 continue;
             }
-            p.print();
+            if last_file != Some(p.file.as_str()) {
+                if last_file.is_some() {
+                    println!();
+                }
+                p.print_file_heading(colorize);
+                last_file = Some(p.file.as_str());
+            }
+            p.print_match_line(colorize, &token_set);
         }
     }
 
