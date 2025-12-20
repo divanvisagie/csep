@@ -1,7 +1,7 @@
-use tracing::{error, info};
 use anyhow::Result;
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use async_trait::async_trait;  // Add this dependency in your `Cargo.toml`
+use tracing::{error, info}; // Add this dependency in your `Cargo.toml`
 
 use super::EmbeddingsClient;
 
@@ -32,6 +32,7 @@ struct OllamaResponse {
 }
 
 /// Benchmark leaderboard: https://huggingface.co/spaces/mteb/leaderboard
+#[allow(dead_code)]
 pub const OLLAMA_MODELS: [&str; 3] = ["all-minilm", "mxbai-embed-large", "nomic-embed-text"];
 
 async fn get_one(request: OllamaRequest, base_url: &str) -> Result<OllamaResponse> {
@@ -45,17 +46,19 @@ async fn get_one(request: OllamaRequest, base_url: &str) -> Result<OllamaRespons
     Ok(response_object)
 }
 
-
 #[async_trait]
 impl EmbeddingsClient for OllamaEmbeddingsClient {
     async fn get_embeddings(&self, text: &[&str]) -> Result<Vec<Vec<f32>>> {
-        let futs: Vec<_> = text.iter().map(|&t| {
-            let request = OllamaRequest {
-                model: self.model.to_string(),
-                prompt: t.to_string(),
-            };
-            get_one(request, self.base_url)
-        }).collect();
+        let futs: Vec<_> = text
+            .iter()
+            .map(|&t| {
+                let request = OllamaRequest {
+                    model: self.model.to_string(),
+                    prompt: t.to_string(),
+                };
+                get_one(request, self.base_url)
+            })
+            .collect();
 
         let responses = futures::future::join_all(futs).await;
 
@@ -66,7 +69,7 @@ impl EmbeddingsClient for OllamaEmbeddingsClient {
                 Ok(r) => embeddings.push(r.embedding),
                 Err(e) => {
                     error!("Error in response object: {}", e);
-                    return Err(anyhow::anyhow!("Error in response object"))
+                    return Err(anyhow::anyhow!("Error in response object"));
                 }
             }
         }

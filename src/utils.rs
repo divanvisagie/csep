@@ -26,4 +26,3 @@ pub fn get_stdin() -> String {
 
     lines.join("\n")
 }
-

@@ -1,6 +1,3 @@
-use rayon::prelude::*;
-use std::collections::HashSet;
-use std::path::Path;
 use crate::{
     chunker::{get_chunks_and_embeddings_or_load_from_cache, Chunk},
     clients::{EmbeddingsClient, EmbeddingsClientImpl},
@@ -8,10 +5,14 @@ use crate::{
     utils::cosine_similarity,
 };
 use anyhow::Result;
+use rayon::prelude::*;
+use std::collections::HashSet;
+use std::path::Path;
 
 pub struct PrintableChunk {
     file: String,
     line: usize,
+    #[allow(dead_code)]
     chunk: String,
     display_line: String,
     similarity: f32,
@@ -39,13 +40,7 @@ impl PrintableChunk {
             let line_color = "\x1b[32m";
             let match_color = "\x1b[31m";
             let highlighted = highlight_line(&self.display_line, token_set, match_color, reset);
-            println!(
-                "{}{}{}:{}",
-                line_color,
-                self.line,
-                reset,
-                highlighted
-            );
+            println!("{}{}{}:{}", line_color, self.line, reset, highlighted);
         } else {
             println!("{}:{}", self.line, self.display_line);
         }
@@ -129,6 +124,7 @@ fn select_display_line(query_tokens: &[String], chunk: &Chunk) -> (usize, String
     (line_number, lines[best_idx].to_string())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn run(
     embeddings_client: &EmbeddingsClientImpl,
     search_phrase: &str,
@@ -137,20 +133,18 @@ pub async fn run(
     vimgrep: &bool,
     should_print: &bool,
     globs: &[String],
+    model_name: &str,
 ) -> Result<()> {
     let query_tokens = tokenize_query(search_phrase);
     let token_set: HashSet<String> = query_tokens.iter().cloned().collect();
-    let search_phrase_embeddings = embeddings_client
-        .get_embeddings(&[search_phrase])
-        .await?;
+    let search_phrase_embeddings = embeddings_client.get_embeddings(&[search_phrase]).await?;
     let search_phrase_embeddings = &search_phrase_embeddings[0];
 
     let search_chunk = Chunk {
         line: 0,
         text: search_phrase.to_string(),
-        embeddings: search_phrase_embeddings.to_owned()
+        embeddings: search_phrase_embeddings.to_owned(),
     };
-    
 
     // Now lets work with the files in the current directory
     let current_dir = std::env::current_dir()?.clone();
@@ -162,12 +156,19 @@ pub async fn run(
 
     let mut printable_chunk = Vec::new();
 
-    let chunk_futures: Vec<_> = files.par_iter().map(|file| {
-         get_chunks_and_embeddings_or_load_from_cache(file.as_str(), embeddings_client)
-    }).collect();
+    let chunk_futures: Vec<_> = files
+        .par_iter()
+        .map(|file| {
+            get_chunks_and_embeddings_or_load_from_cache(
+                file.as_str(),
+                embeddings_client,
+                model_name,
+            )
+        })
+        .collect();
 
     let chunk_results = futures::future::join_all(chunk_futures).await;
-    
+
     for chunk_result in chunk_results {
         let chunks = match chunk_result {
             Ok(chunks) => chunks,
@@ -186,6 +187,7 @@ pub async fn run(
             continue;
         }
 
+        #[allow(unused_mut)]
         let mut printable_chunks = printable_chunks
             .map(|chunk| {
                 let (line_number, display_line) = select_display_line(&query_tokens, chunk);

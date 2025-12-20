@@ -1,4 +1,4 @@
-use clap::{command, Parser};
+use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -21,7 +21,6 @@ pub struct Args {
     #[arg(short = 'f', long)]
     pub floor: Option<f32>,
 
-
     /// If set will not print out the query with the results
     #[arg(short, long)]
     pub no_query: bool,
@@ -30,6 +29,9 @@ pub struct Args {
     #[arg(short, long)]
     pub list_models: bool,
 
+    /// Show verbose output including current model information
+    #[arg(long)]
+    pub verbose: bool,
 
     /// Print in vimgrep compatible mode
     #[arg(short, long)]
@@ -39,7 +41,12 @@ pub struct Args {
     #[arg(short = 'g', long = "glob")]
     pub glob: Vec<String>,
 
-    /// Set the model
+    /// Set the embedding model to use
+    ///
+    /// Available models:
+    ///   - all-minilm-l6-v2 (default): Fast, general-purpose
+    ///   - bge-small-en-v1.5 (recommended): Modern, balanced
+    ///   - See --list-models for full list
     #[arg(short = 'M', long)]
     pub model: Option<String>,
 
@@ -48,14 +55,15 @@ pub struct Args {
     pub client: Option<String>,
 
     #[command(subcommand)]
-    pub subcmd: Option<SubCommands>
-
+    pub subcmd: Option<SubCommands>,
 }
 
 #[derive(Parser, Debug)]
 pub enum SubCommands {
     /// Options for managing the embeddings cache
     Cache(CacheSubcommand),
+    /// Options for managing csep configuration
+    Config(ConfigSubcommand),
 }
 
 #[derive(Parser, Debug)]
@@ -69,5 +77,21 @@ pub struct CacheSubcommand {
     /// This subcommand will default to building the cache if
     /// no other option is provided
     #[arg(short, long)]
-    pub build: bool
+    pub build: bool,
+}
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+pub struct ConfigSubcommand {
+    /// Set the default model for all future runs
+    #[arg(short, long)]
+    pub model: Option<String>,
+
+    /// Show the current configuration
+    #[arg(short, long)]
+    pub show: bool,
+
+    /// Reset configuration to defaults
+    #[arg(short, long)]
+    pub reset: bool,
 }

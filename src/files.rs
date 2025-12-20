@@ -12,21 +12,22 @@ fn is_binary_file(file: &str) -> bool {
     let banned_extensions = vec![
         "png", "jpg", "jpeg", "gif", "bmp", "ico", "tiff", "webp", "svg", "mp3", "mp4", "webm",
         "ogg", "flac", "wav", "avi", "mov", "wmv", "mpg", "flv", "swf", "zip", "gz", "tar", "rar",
-        "7z", "bz2", "xz", "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "eot", "ttf", "woff",
-        "woff2", "otf", "swf", "wasm", "webm", "webp", "mp4", "mp3", "ogg", "flac", "wav", "avi",
-        "mov", "wmv", "mpg", "flv", "swf", "zip", "gz", "tar", "rar", "7z", "bz2", "xz", "pdf",
-        "doc", "docx", "xls", "xlsx", "ppt", "pptx", "eot", "ttf", "woff", "woff2", "otf", "swf",
-        "wasm", "webm", "webp", "mp4", "mp3", "ogg", "flac", "wav", "avi", "mov", "wmv", "mpg",
-        "flv", "swf", "zip", "gz", "tar", "rar", "7z", "bz2", "xz", "pdf", "doc", "docx", "xls",
-        "xlsx", "ppt", "pptx", "eot", "ttf", "woff", "woff2", "otf", "swf", "wasm", "webm", "webp",
-        "mp4", "mp3", "ogg", "flac", "wav", "avi", "mov", "wmv", "mpg", "flv", "swf", "zip", "gz",
-        "tar", "rar", "7z", "bz2", "xz", "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "eot",
+        "7z", "bz2", "xz", "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "eot", "ttf",
+        "woff", "woff2", "otf", "swf", "wasm", "webm", "webp", "mp4", "mp3", "ogg", "flac", "wav",
+        "avi", "mov", "wmv", "mpg", "flv", "swf", "zip", "gz", "tar", "rar", "7z", "bz2", "xz",
+        "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "eot", "ttf", "woff", "woff2", "otf",
+        "swf", "wasm", "webm", "webp", "mp4", "mp3", "ogg", "flac", "wav", "avi", "mov", "wmv",
+        "mpg", "flv", "swf", "zip", "gz", "tar", "rar", "7z", "bz2", "xz", "pdf", "doc", "docx",
+        "xls", "xlsx", "ppt", "pptx", "eot", "ttf", "woff", "woff2", "otf", "swf", "wasm", "webm",
+        "webp", "mp4", "mp3", "ogg", "flac", "wav", "avi", "mov", "wmv", "mpg", "flv", "swf",
+        "zip", "gz", "tar", "rar", "7z", "bz2", "xz", "pdf", "doc", "docx", "xls", "xlsx", "ppt",
+        "pptx", "eot",
     ];
 
-    if let Some(extension) = file.split('.').last() {
-        return banned_extensions.contains(&extension);
+    if let Some(extension) = file.split('.').next_back() {
+        banned_extensions.contains(&extension)
     } else {
-        return false;
+        false
     }
 }
 
@@ -95,17 +96,17 @@ mod tests {
         for file in &files {
             println!("{}", file);
         }
-        assert_eq!(files.contains(&"data/subdir/more.txt".to_string()), true);
-        assert_eq!(files.contains(&"data/typescript.txt".to_string()), true);
-        assert_eq!(files.contains(&"data/rust.txt".to_string()), true);
+        assert!(files.contains(&"data/subdir/more.txt".to_string()));
+        assert!(files.contains(&"data/typescript.txt".to_string()));
+        assert!(files.contains(&"data/rust.txt".to_string()));
         assert_eq!(files.len(), 3);
     }
 
     #[test]
     fn test_is_binary() {
-        assert_eq!(is_binary_file("file.png"), true);
-        assert_eq!(is_binary_file("file.txt"), false);
-        assert_eq!(is_binary_file("file.rs"), false);
-        assert_eq!(is_binary_file("file"), true);
+        assert!(is_binary_file("file.png"));
+        assert!(!is_binary_file("file.txt"));
+        assert!(!is_binary_file("file.rs"));
+        assert!(is_binary_file("file"));
     }
 }

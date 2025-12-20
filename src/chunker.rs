@@ -10,6 +10,7 @@ use tracing::warn;
 use crate::{
     clients::{EmbeddingsClient, EmbeddingsClientImpl},
     files::read_file_with_fallback,
+    paths,
 };
 
 #[derive(Serialize, Deserialize)]
@@ -19,9 +20,8 @@ pub struct Chunk {
     pub embeddings: Vec<f32>,
 }
 
-pub fn get_cache_path() -> PathBuf {
-    let tmp_dir = dirs::cache_dir().unwrap();
-    tmp_dir.join("csep").join("embeddings")
+pub fn get_cache_path(model_name: &str) -> PathBuf {
+    paths::embeddings_cache_dir(model_name)
 }
 
 pub fn count_lines_in_text(text: &str) -> usize {
@@ -30,9 +30,10 @@ pub fn count_lines_in_text(text: &str) -> usize {
 
 /// Chunk a file into smaller pieces and get embeddings for each chunk
 /// using TextSplitter and the provided embeddings client
-pub async fn get_chunks_and_embeddings_or_load_from_cache<'a>(
-    file: &'a str,
+pub async fn get_chunks_and_embeddings_or_load_from_cache(
+    file: &str,
     embeddings_client: &EmbeddingsClientImpl,
+    model_name: &str,
 ) -> Result<(String, Vec<Chunk>)> {
     let file_text = match read_file_with_fallback(file) {
         Ok(text) => text,
@@ -44,7 +45,7 @@ pub async fn get_chunks_and_embeddings_or_load_from_cache<'a>(
 
     let hash_of_file = Sha256::digest(file_text.as_bytes());
     let cache_file_name = format!("{:x}.cache", hash_of_file);
-    let file_path = get_cache_path().join(cache_file_name);
+    let file_path = get_cache_path(model_name).join(cache_file_name);
 
     if file_path.exists() {
         match bincode::deserialize(&fs::read(&file_path)?) {
@@ -70,6 +71,7 @@ pub async fn get_chunks_and_embeddings_or_load_from_cache<'a>(
     let embeddings_batch = embeddings_client.get_embeddings(&str_chunks[..]).await?;
 
     let mut lc = 1;
+    #[allow(clippy::unused_enumerate_index)]
     let chunks = str_chunks
         .iter()
         .zip(embeddings_batch.iter())
@@ -84,7 +86,7 @@ pub async fn get_chunks_and_embeddings_or_load_from_cache<'a>(
         })
         .collect();
 
-    fs::create_dir_all(get_cache_path())?;
+    fs::create_dir_all(get_cache_path(model_name))?;
     fs::write(file_path, bincode::serialize(&chunks)?)?;
 
     Ok((file.to_string(), chunks))
@@ -100,4 +102,3 @@ mod tests {
         assert_eq!(count_lines_in_text(text), 2);
     }
 }
-
