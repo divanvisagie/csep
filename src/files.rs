@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::fs::{self, File};
 
-use ignore::WalkBuilder;
+use ignore::{overrides::OverrideBuilder, WalkBuilder};
 use memmap2::Mmap;
 
 fn is_binary_file(file: &str) -> bool {
@@ -30,10 +30,24 @@ fn is_binary_file(file: &str) -> bool {
     }
 }
 
-pub fn get_all_files_in_directory(dir: &str) -> Vec<String> {
+pub fn get_all_files_in_directory(dir: &str, globs: &[String]) -> Result<Vec<String>> {
     let mut files = Vec::new();
+    let overrides = if globs.is_empty() {
+        None
+    } else {
+        let mut builder = OverrideBuilder::new(dir);
+        for glob in globs {
+            builder.add(glob)?;
+        }
+        Some(builder.build()?)
+    };
 
-    for result in WalkBuilder::new(dir).build() {
+    let mut walker = WalkBuilder::new(dir);
+    if let Some(overrides) = overrides {
+        walker.overrides(overrides);
+    }
+
+    for result in walker.build() {
         match result {
             Ok(entry) => {
                 let path = entry.path();
@@ -53,7 +67,7 @@ pub fn get_all_files_in_directory(dir: &str) -> Vec<String> {
         }
     }
 
-    files
+    Ok(files)
 }
 
 pub fn read_file_with_fallback(file: &str) -> Result<String> {
@@ -76,7 +90,7 @@ mod tests {
 
     #[test]
     fn test_get_all_files_in_directory() {
-        let files = get_all_files_in_directory("data");
+        let files = get_all_files_in_directory("data", &[]).expect("should list files");
         // print the list of files
         for file in &files {
             println!("{}", file);

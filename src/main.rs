@@ -76,6 +76,7 @@ async fn main() {
                     &true,
                     &args.vimgrep,
                     &false,
+                    &args.glob,
                 )
                 .await;
 
@@ -112,6 +113,7 @@ async fn main() {
         &args.no_query,
         &args.vimgrep,
         &true,
+        &args.glob,
     )
     .await;
 

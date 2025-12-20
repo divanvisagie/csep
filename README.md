@@ -20,6 +20,46 @@ command line llm tool like
 [chat-gipity](https://github.com/divanvisagie/chat-gipity) or [Ollama](https://ollama.com/) you could
 even potentially perform [RAG](https://www.wikiwand.com/en/Prompt_engineering#Retrieval-augmented_generation) in a simple unix shell script.
 
+## Usage
+
+Default output mirrors rg: file heading followed by line:match entries, with exact query tokens highlighted.
+
+```sh
+# Basic search
+csep "main entry point"
+
+# Filter to markdown files
+csep -g '*.md' "main entry point"
+
+# vimgrep-compatible output
+csep --vimgrep "main entry point"
+```
+
+### Example output
+
+Input:
+```sh
+csep "main entry point"
+```
+
+Output:
+```
+src/main.rs
+22:#[tokio::main]
+23:async fn main() {
+```
+
+Input:
+```sh
+csep -g '*.md' "main entry point"
+```
+
+Output:
+```
+README.md
+12:Print) takes an input phrase and prints all the chunks that are similar to it.
+```
+
 ## Installation
 
 You can then install csep from this source using:

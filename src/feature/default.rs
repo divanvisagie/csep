@@ -136,6 +136,7 @@ pub async fn run(
     _no_query: &bool,
     vimgrep: &bool,
     should_print: &bool,
+    globs: &[String],
 ) -> Result<()> {
     let query_tokens = tokenize_query(search_phrase);
     let token_set: HashSet<String> = query_tokens.iter().cloned().collect();
@@ -157,7 +158,7 @@ pub async fn run(
         Some(dir) => dir,
         None => panic!("Could not get current directory"),
     };
-    let files = get_all_files_in_directory(current_directory);
+    let files = get_all_files_in_directory(current_directory, globs)?;
 
     let mut printable_chunk = Vec::new();
 

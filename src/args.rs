@@ -31,6 +31,10 @@ pub struct Args {
     #[arg(short, long)]
     pub vimgrep: bool,
 
+    /// Include or exclude files using glob patterns (repeatable)
+    #[arg(short = 'g', long = "glob")]
+    pub glob: Vec<String>,
+
     /// Set the model
     #[arg(short = 'M', long)]
     pub model: Option<String>,
@@ -63,4 +67,3 @@ pub struct CacheSubcommand {
     #[arg(short, long)]
     pub build: bool
 }
-
