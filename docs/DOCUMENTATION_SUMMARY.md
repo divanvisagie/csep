@@ -52,12 +52,14 @@
 ```
 csep/
 ├── README.md                          # Main docs with storage overview
-├── MIGRATION_GUIDE.md                # Upgrade instructions
-├── STORAGE_LOCATIONS.md              # Detailed storage documentation
 ├── docs/
-│   └── csep.1                        # Man page (updated)
+│   ├── csep.1                        # Man page
+│   ├── MIGRATION_GUIDE.md            # Upgrade instructions
+│   ├── STORAGE_LOCATIONS.md          # Detailed storage documentation
+│   ├── MODEL_UPGRADE_PROPOSAL.md     # Model upgrade proposal
+│   └── DOCUMENTATION_SUMMARY.md      # This file
 └── src/
-    └── paths.rs                      # Path handling module (documented)
+    └── paths.rs                      # Path handling module
 ```
 
 ## Key Messages Communicated

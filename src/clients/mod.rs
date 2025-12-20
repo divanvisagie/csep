@@ -1,12 +1,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-
-use self::fastembed::FastEmbeddingsClient;
-use self::ollama::OllamaEmbeddingsClient;
 
 pub mod fastembed;
-pub mod ollama;
 
 /// Model information for listing available embedding models
 #[derive(Debug, Clone)]
@@ -88,29 +83,6 @@ pub fn get_available_models() -> Vec<ModelInfo> {
     ]
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
-struct EmbeddingsRequest {
-    input: String,
-    model: String,
-}
-
-#[allow(dead_code)]
-#[allow(clippy::large_enum_variant)]
-pub enum EmbeddingsClientImpl {
-    Ollama(OllamaEmbeddingsClient),
-    FastEmbed(FastEmbeddingsClient),
-}
-
-#[async_trait]
-impl EmbeddingsClient for EmbeddingsClientImpl {
-    async fn get_embeddings(&self, text: &[&str]) -> Result<Vec<Vec<f32>>> {
-        match self {
-            EmbeddingsClientImpl::Ollama(client) => client.get_embeddings(text).await,
-            EmbeddingsClientImpl::FastEmbed(client) => client.get_embeddings(text).await,
-        }
-    }
-}
 
 #[async_trait]
 pub trait EmbeddingsClient {

@@ -8,7 +8,7 @@ use tiktoken_rs::cl100k_base;
 use tracing::warn;
 
 use crate::{
-    clients::{EmbeddingsClient, EmbeddingsClientImpl},
+    clients::{fastembed::FastEmbeddingsClient, EmbeddingsClient},
     files::read_file_with_fallback,
     paths,
 };
@@ -32,7 +32,7 @@ pub fn count_lines_in_text(text: &str) -> usize {
 /// using TextSplitter and the provided embeddings client
 pub async fn get_chunks_and_embeddings_or_load_from_cache(
     file: &str,
-    embeddings_client: &EmbeddingsClientImpl,
+    embeddings_client: &FastEmbeddingsClient,
     model_name: &str,
 ) -> Result<(String, Vec<Chunk>)> {
     let file_text = match read_file_with_fallback(file) {

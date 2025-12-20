@@ -1,8 +1,6 @@
 use args::{Args, SubCommands};
 use clap::Parser;
-use clients::{
-    fastembed::FastEmbeddingsClient, ollama::OllamaEmbeddingsClient, EmbeddingsClientImpl,
-};
+use clients::fastembed::FastEmbeddingsClient;
 use spinners::{Spinner, Spinners};
 use tracing::error;
 use utils::{cosine_similarity, get_stdin};
@@ -35,12 +33,6 @@ async fn main() {
         // Determine current model: CLI flag overrides config
         let current_model = if let Some(model) = args.model.as_ref() {
             model.as_str()
-        } else if let Some(client) = args.client.as_ref() {
-            match client.as_str() {
-                "fastembed" => &config_default_model,
-                "ollama" => "all-minilm",
-                _ => "unknown",
-            }
         } else {
             &config_default_model
         };
@@ -108,35 +100,11 @@ async fn main() {
     let config = config::load_config().unwrap_or_default();
     let default_model = config.default_model;
 
-    let embeddings_client = match args.client {
-        Some(client) => match client.as_str() {
-            "ollama" => {
-                let model_name = args.model.as_deref().unwrap_or("all-minilm");
-                if args.verbose {
-                    println!("Using Ollama client with model: {}", model_name);
-                }
-                EmbeddingsClientImpl::Ollama(OllamaEmbeddingsClient::new(&args.model))
-            }
-            "fastembed" => {
-                let model_name = args.model.as_deref().unwrap_or(&default_model);
-                if args.verbose {
-                    println!("Using FastEmbed client with model: {}", model_name);
-                }
-                EmbeddingsClientImpl::FastEmbed(FastEmbeddingsClient::new(Some(model_name)))
-            }
-            _ => {
-                error!("Invalid client: {}", client);
-                return;
-            }
-        },
-        None => {
-            let model_name = args.model.as_deref().unwrap_or(&default_model);
-            if args.verbose {
-                println!("Using FastEmbed client with model: {}", model_name);
-            }
-            EmbeddingsClientImpl::FastEmbed(FastEmbeddingsClient::new(Some(model_name)))
-        }
-    };
+    let model_name = args.model.as_deref().unwrap_or(&default_model);
+    if args.verbose {
+        println!("Using FastEmbed client with model: {}", model_name);
+    }
+    let embeddings_client = FastEmbeddingsClient::new(Some(model_name));
 
     if let Some(subcmd) = args.subcmd {
         match subcmd {
@@ -250,10 +218,7 @@ async fn main() {
     }
 
     // Determine the model name to use for caching
-    let model_name = match &embeddings_client {
-        EmbeddingsClientImpl::FastEmbed(client) => client.model_name(),
-        EmbeddingsClientImpl::Ollama(_) => "ollama",
-    };
+    let cache_model_name = embeddings_client.model_name();
 
     let run_result = feature::default::run(
         &embeddings_client,
@@ -263,7 +228,7 @@ async fn main() {
         &args.vimgrep,
         &true,
         &args.glob,
-        model_name,
+        cache_model_name,
     )
     .await;
 

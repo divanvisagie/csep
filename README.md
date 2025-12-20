@@ -3,7 +3,7 @@
 
 Cosine Similarity Embeddings Print
 
-**Version 0.2.0** - Cache location standardized to `~/.cache/csep/embeddings/` on all platforms. See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for details.
+**Version 0.2.0** - Cache location standardized to `~/.cache/csep/embeddings/` on all platforms. See [MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md) for details.
 
 ```
 ╭─── ╭────┬───────╮
@@ -91,13 +91,4 @@ CSEP uses two storage locations:
 - **Embeddings Cache**: `~/.cache/csep/embeddings/` - Stores computed file embeddings
 - **Models Cache**: `~/.local/share/csep/models/` - Stores downloaded embedding models (fastembed only)
 
-See [STORAGE_LOCATIONS.md](STORAGE_LOCATIONS.md) for detailed information about cache management and migration.
-
-### Ollama client option
-If you want to use the ollama client option, you will need to install ollama and pull the default all-minilm model, or any model you wish to use with the model switch, since ollama currently doesnt suppor pulling the models for embeddings automatically like it does with llms.
-
-```sh
-ollama pull all-minilm
-```
-
-Per embedding, fastembed is actually much slower, but due to the overhead of making requests to ollama, for large directories, the embeddings cache builds much faster when using fastembed.
+See [STORAGE_LOCATIONS.md](docs/STORAGE_LOCATIONS.md) for detailed information about cache management and migration.

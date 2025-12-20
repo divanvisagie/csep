@@ -50,10 +50,6 @@ pub struct Args {
     #[arg(short = 'M', long)]
     pub model: Option<String>,
 
-    /// Set whether to use the ollama or fastembed
-    #[arg(short, long)]
-    pub client: Option<String>,
-
     #[command(subcommand)]
     pub subcmd: Option<SubCommands>,
 }

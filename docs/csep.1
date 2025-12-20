@@ -39,10 +39,7 @@ Show verbose output including current model information.
 Include or exclude files using glob patterns (repeatable).
 .TP
 \fB\-M\fR, \fB\--model\fR \fIMODEL\fR
-Set the model.
-.TP
-\fB\-c\fR, \fB\--client\fR \fICLIENT\fR
-Set whether to use the ollama or fastembed client.
+Set the embedding model to use.
 .TP
 \fB\-h\fR, \fB\--help\fR
 Prints help information and exits.
@@ -70,9 +67,6 @@ Print in vimgrep compatible mode:
 Set the model to "model_name":
 .B csep --model model_name
 .TP
-Set the client to "ollama":
-.B csep --client ollama
-.TP
 Do not print the query with the results:
 .B csep -n "first string" "second string"
 
@@ -80,4 +74,4 @@ Do not print the query with the results:
 For more information, visit the official repository or contact the author.
 
 .SH COPYRIGHT
-Written by Divan Visagie, 2024.
+Written by Divan Visagie, 2024-2025.

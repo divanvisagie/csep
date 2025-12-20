@@ -1,16 +1,15 @@
 use crate::{
     chunker::Chunk,
-    clients::{ollama::OllamaEmbeddingsClient, EmbeddingsClient},
+    clients::{fastembed::FastEmbeddingsClient, EmbeddingsClient},
     cosine_similarity,
 };
 use anyhow::Result;
 
 pub async fn run(first: String, second: String, model: &Option<String>) -> Result<()> {
-    let model_clone = model.clone();
-    let oec = OllamaEmbeddingsClient::new(&model_clone);
+    let client = FastEmbeddingsClient::new(model.as_deref());
 
-    let first_embeddings = oec.get_embeddings(&[first.as_str()]).await?;
-    let second_embeddings = oec.get_embeddings(&[second.as_str()]).await?;
+    let first_embeddings = client.get_embeddings(&[first.as_str()]).await?;
+    let second_embeddings = client.get_embeddings(&[second.as_str()]).await?;
 
     let first_chunk = Chunk {
         line: 0,

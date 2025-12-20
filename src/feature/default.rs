@@ -1,6 +1,6 @@
 use crate::{
     chunker::{get_chunks_and_embeddings_or_load_from_cache, Chunk},
-    clients::{EmbeddingsClient, EmbeddingsClientImpl},
+    clients::{fastembed::FastEmbeddingsClient, EmbeddingsClient},
     files::get_all_files_in_directory,
     utils::cosine_similarity,
 };
@@ -126,7 +126,7 @@ fn select_display_line(query_tokens: &[String], chunk: &Chunk) -> (usize, String
 
 #[allow(clippy::too_many_arguments)]
 pub async fn run(
-    embeddings_client: &EmbeddingsClientImpl,
+    embeddings_client: &FastEmbeddingsClient,
     search_phrase: &str,
     floor: &f32,
     _no_query: &bool,
