@@ -2,6 +2,8 @@ use anyhow::Result;
 use async_trait::async_trait;
 
 pub mod fastembed;
+#[cfg(any(feature = "cuda", feature = "metal"))]
+pub mod qwen3;
 
 /// Model information for listing available embedding models
 #[derive(Debug, Clone)]
@@ -16,7 +18,8 @@ pub struct ModelInfo {
 
 /// Get information about all available embedding models
 pub fn get_available_models() -> Vec<ModelInfo> {
-    vec![
+    #[allow(unused_mut)]
+    let mut models = vec![
         ModelInfo {
             name: "all-minilm-l6-v2",
             description: "Small, fast model for general use",
@@ -80,11 +83,41 @@ pub fn get_available_models() -> Vec<ModelInfo> {
             dimensions: 1024,
             parameters: "335M",
         },
-    ]
+    ];
+
+    #[cfg(any(feature = "cuda", feature = "metal"))]
+    models.push(ModelInfo {
+        name: "qwen3-0.6b",
+        description: "Qwen3 embedding model [GPU]",
+        category: "gpu",
+        dimensions: 1024,
+        parameters: "600M",
+    });
+
+    models
 }
 
 
 #[async_trait]
-pub trait EmbeddingsClient {
+pub trait EmbeddingsClient: Send + Sync {
     async fn get_embeddings(&self, text: &[&str]) -> Result<Vec<Vec<f32>>>;
+    fn model_name(&self) -> &str;
+}
+
+/// Create an embeddings client based on available features and GPU preference.
+///
+/// When built with `cuda` or `metal` features and `no_gpu` is false,
+/// tries to create a Qwen3 GPU client first. Falls back to ONNX if
+/// no GPU is detected or if the user opted out with `--no-gpu`.
+#[allow(unused_variables)]
+pub fn create_client(model: Option<&str>, no_gpu: bool) -> Box<dyn EmbeddingsClient> {
+    #[cfg(any(feature = "cuda", feature = "metal"))]
+    if !no_gpu {
+        if let Some(client) = qwen3::Qwen3EmbeddingsClient::try_new(model) {
+            return Box::new(client);
+        }
+        eprintln!("Warning: GPU feature enabled but no GPU detected, falling back to ONNX backend");
+    }
+
+    Box::new(fastembed::FastEmbeddingsClient::new(model))
 }

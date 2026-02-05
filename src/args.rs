@@ -41,6 +41,10 @@ pub struct Args {
     #[arg(short = 'g', long = "glob")]
     pub glob: Vec<String>,
 
+    /// Force CPU/ONNX backend even when GPU is available
+    #[arg(long, global = true)]
+    pub no_gpu: bool,
+
     /// Set the embedding model to use
     ///
     /// Available models:

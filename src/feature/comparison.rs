@@ -1,12 +1,11 @@
 use crate::{
     chunker::Chunk,
-    clients::{fastembed::FastEmbeddingsClient, EmbeddingsClient},
+    clients::EmbeddingsClient,
     cosine_similarity,
 };
 use anyhow::Result;
 
-pub async fn run(first: String, second: String, model: &Option<String>) -> Result<()> {
-    let client = FastEmbeddingsClient::new(model.as_deref());
+pub async fn run(first: String, second: String, client: &dyn EmbeddingsClient) -> Result<()> {
 
     let first_embeddings = client.get_embeddings(&[first.as_str()]).await?;
     let second_embeddings = client.get_embeddings(&[second.as_str()]).await?;

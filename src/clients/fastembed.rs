@@ -1,16 +1,17 @@
 use std::path::PathBuf;
 
-use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
+use fastembed::{EmbeddingModel, TextEmbedding, TextInitOptions};
 
 use anyhow::Result;
 use async_trait::async_trait;
 use rayon::prelude::*;
+use std::sync::Mutex;
 
 use super::EmbeddingsClient;
 use crate::paths;
 
 pub struct FastEmbeddingsClient {
-    model: TextEmbedding,
+    model: Mutex<TextEmbedding>,
     model_name: String,
 }
 
@@ -43,21 +44,15 @@ impl FastEmbeddingsClient {
             }
         };
 
-        let init_options = InitOptions::new(embedding_model)
+        let init_options = TextInitOptions::new(embedding_model)
             .with_show_download_progress(true)
             .with_cache_dir(get_cache_path());
-        let model = TextEmbedding::try_new(init_options);
-        let model = model.unwrap();
+        let model = TextEmbedding::try_new(init_options).unwrap();
 
         FastEmbeddingsClient {
-            model,
+            model: Mutex::new(model),
             model_name: model_name.to_string(),
         }
-    }
-
-    /// Get the model name for this client
-    pub fn model_name(&self) -> &str {
-        &self.model_name
     }
 }
 
@@ -70,8 +65,13 @@ impl EmbeddingsClient for FastEmbeddingsClient {
             .collect::<Vec<String>>();
 
         // Default batch size, 256 which is used if we pass None
-        let embeddings = self.model.embed(documents, None)?;
+        let mut model = self.model.lock().map_err(|e| anyhow::anyhow!("Lock poisoned: {}", e))?;
+        let embeddings = model.embed(documents, None)?;
 
         Ok(embeddings)
+    }
+
+    fn model_name(&self) -> &str {
+        &self.model_name
     }
 }

@@ -1,6 +1,5 @@
 use args::{Args, SubCommands};
 use clap::Parser;
-use clients::fastembed::FastEmbeddingsClient;
 use spinners::{Spinner, Spinners};
 use tracing::error;
 use utils::{cosine_similarity, get_stdin};
@@ -101,10 +100,16 @@ async fn main() {
     let default_model = config.default_model;
 
     let model_name = args.model.as_deref().unwrap_or(&default_model);
+    let embeddings_client = clients::create_client(Some(model_name), args.no_gpu);
     if args.verbose {
-        println!("Using FastEmbed client with model: {}", model_name);
+        println!("Using model: {} ({})", embeddings_client.model_name(),
+            if cfg!(any(feature = "cuda", feature = "metal")) && !args.no_gpu {
+                "GPU"
+            } else {
+                "CPU/ONNX"
+            }
+        );
     }
-    let embeddings_client = FastEmbeddingsClient::new(Some(model_name));
 
     if let Some(subcmd) = args.subcmd {
         match subcmd {
@@ -125,18 +130,15 @@ async fn main() {
                 let mut spinner =
                     Spinner::new(Spinners::Dots9, "Building embeddings cache...".into());
 
-                // Get model name for cache path (this will be used when we implement dynamic model switching)
-                let _model_name = "all-minilm-l6-v2"; // Default for cache building
-
                 let run_result = feature::default::run(
-                    &embeddings_client,
+                    embeddings_client.as_ref(),
                     "",
                     &floor,
                     &true,
                     &args.vimgrep,
                     &false,
                     &args.glob,
-                    "all-minilm-l6-v2", // Model name for cache building
+                    embeddings_client.model_name(),
                 )
                 .await;
 
@@ -208,7 +210,7 @@ async fn main() {
     }
 
     if let Some(comparison) = args.comparison {
-        let run_result = feature::comparison::run(search_phrase, comparison, &args.model).await;
+        let run_result = feature::comparison::run(search_phrase, comparison, embeddings_client.as_ref()).await;
 
         match run_result {
             Ok(_) => return,
@@ -221,7 +223,7 @@ async fn main() {
     let cache_model_name = embeddings_client.model_name();
 
     let run_result = feature::default::run(
-        &embeddings_client,
+        embeddings_client.as_ref(),
         &search_phrase,
         &floor,
         &args.no_query,
