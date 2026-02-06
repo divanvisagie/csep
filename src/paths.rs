@@ -31,6 +31,11 @@ pub fn default_embeddings_cache_dir() -> PathBuf {
     embeddings_cache_dir("all-minilm-l6-v2")
 }
 
+/// Get the database file path for a specific model's embeddings
+pub fn embeddings_db_path(model_name: &str) -> PathBuf {
+    embeddings_cache_dir(model_name).join("cache.db")
+}
+
 /// Get the models cache path
 pub fn models_cache_dir() -> PathBuf {
     data_dir().join("models")

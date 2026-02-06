@@ -1,11 +1,10 @@
 use crate::{
-    chunker::{get_chunks_and_embeddings_or_load_from_cache, Chunk},
-    clients::EmbeddingsClient,
+    chunker::get_chunks_and_embeddings_or_load_from_cache,
+    clients::{self, EmbeddingsClient},
+    db,
     files::get_all_files_in_directory,
-    utils::cosine_similarity,
 };
 use anyhow::Result;
-use rayon::prelude::*;
 use std::collections::HashSet;
 use std::path::Path;
 
@@ -98,10 +97,14 @@ fn highlight_line(
     output
 }
 
-fn select_display_line(query_tokens: &[String], chunk: &Chunk) -> (usize, String) {
-    let lines: Vec<&str> = chunk.text.lines().collect();
+fn select_display_line_from_text(
+    query_tokens: &[String],
+    text: &str,
+    chunk_line: usize,
+) -> (usize, String) {
+    let lines: Vec<&str> = text.lines().collect();
     if lines.is_empty() {
-        return (chunk.line, String::new());
+        return (chunk_line, String::new());
     }
 
     let mut best_idx = 0usize;
@@ -119,7 +122,7 @@ fn select_display_line(query_tokens: &[String], chunk: &Chunk) -> (usize, String
     }
 
     let line_count = lines.len();
-    let start_line = chunk.line.saturating_sub(line_count);
+    let start_line = chunk_line.saturating_sub(line_count);
     let line_number = start_line + best_idx;
     (line_number, lines[best_idx].to_string())
 }
@@ -135,93 +138,76 @@ pub async fn run(
     globs: &[String],
     model_name: &str,
 ) -> Result<()> {
-    let query_tokens = tokenize_query(search_phrase);
-    let token_set: HashSet<String> = query_tokens.iter().cloned().collect();
-    let search_phrase_embeddings = embeddings_client.get_embeddings(&[search_phrase]).await?;
-    let search_phrase_embeddings = &search_phrase_embeddings[0];
-
-    let search_chunk = Chunk {
-        line: 0,
-        text: search_phrase.to_string(),
-        embeddings: search_phrase_embeddings.to_owned(),
-    };
-
-    // Now lets work with the files in the current directory
-    let current_dir = std::env::current_dir()?.clone();
+    let current_dir = std::env::current_dir()?;
     let current_directory = match current_dir.to_str() {
         Some(dir) => dir,
         None => panic!("Could not get current directory"),
     };
     let files = get_all_files_in_directory(current_directory, globs)?;
 
-    let mut printable_chunk = Vec::new();
+    // Phase A: Sync all files to the database
+    let dim = clients::get_embedding_dim(model_name);
+    let database = db::open_or_create(model_name, dim).await?;
+    let conn = database.connect()?;
 
-    let chunk_futures: Vec<_> = files
-        .par_iter()
-        .map(|file| {
-            get_chunks_and_embeddings_or_load_from_cache(
-                file.as_str(),
-                embeddings_client,
-                model_name,
-            )
-        })
-        .collect();
-
-    let chunk_results = futures::future::join_all(chunk_futures).await;
-
-    for chunk_result in chunk_results {
-        let chunks = match chunk_result {
-            Ok(chunks) => chunks,
-            Err(err) => {
-                eprintln!("Error chunking file: {}", err);
-                continue;
-            }
-        };
-
-        let printable_chunks = chunks.1.par_iter().filter(|chunk| {
-            let similarity = cosine_similarity(&search_chunk.embeddings, &chunk.embeddings);
-            similarity > *floor
-        });
-
-        if printable_chunks.clone().count() == 0 {
-            continue;
+    for file in &files {
+        if let Err(err) =
+            get_chunks_and_embeddings_or_load_from_cache(file.as_str(), embeddings_client, &conn)
+                .await
+        {
+            eprintln!("Error chunking file {}: {}", file, err);
         }
-
-        #[allow(unused_mut)]
-        let mut printable_chunks = printable_chunks
-            .map(|chunk| {
-                let (line_number, display_line) = select_display_line(&query_tokens, chunk);
-                PrintableChunk {
-                    line: line_number,
-                    file: Path::new(&chunks.0)
-                        .strip_prefix(current_directory)
-                        .unwrap_or(Path::new(&chunks.0))
-                        .to_string_lossy()
-                        .to_string(),
-                    chunk: chunk.text.clone(),
-                    display_line,
-                    similarity: cosine_similarity(&search_chunk.embeddings, &chunk.embeddings),
-                }
-            })
-            .collect::<Vec<PrintableChunk>>();
-
-        printable_chunk.push(printable_chunks);
     }
 
-    if *should_print {
-        let mut printable_chunk = printable_chunk
-            .par_iter()
-            .flatten()
-            .collect::<Vec<&PrintableChunk>>();
-        printable_chunk.sort_by(|a, b| {
+    // Phase B: Search using vector index
+    if *should_print && !search_phrase.is_empty() {
+        let query_tokens = tokenize_query(search_phrase);
+        let token_set: HashSet<String> = query_tokens.iter().cloned().collect();
+
+        let search_phrase_embeddings =
+            embeddings_client.get_embeddings(&[search_phrase]).await?;
+        let search_phrase_embeddings = &search_phrase_embeddings[0];
+
+        // Use a generous top_k to account for directory filtering
+        let top_k = 100;
+        let dir_prefix = format!("{}/", current_directory);
+        let results =
+            db::vector_search(&conn, search_phrase_embeddings, top_k, &dir_prefix).await?;
+
+        let mut printable_chunks: Vec<PrintableChunk> = results
+            .into_iter()
+            .filter_map(|result| {
+                let similarity = 1.0 - result.distance;
+                if similarity <= *floor {
+                    return None;
+                }
+                let (line_number, display_line) =
+                    select_display_line_from_text(&query_tokens, &result.text, result.line);
+                let relative_path = Path::new(&result.file_path)
+                    .strip_prefix(current_directory)
+                    .unwrap_or(Path::new(&result.file_path))
+                    .to_string_lossy()
+                    .to_string();
+                Some(PrintableChunk {
+                    line: line_number,
+                    file: relative_path,
+                    chunk: result.text,
+                    display_line,
+                    similarity,
+                })
+            })
+            .collect();
+
+        printable_chunks.sort_by(|a, b| {
             a.file
                 .cmp(&b.file)
                 .then_with(|| a.line.cmp(&b.line))
                 .then_with(|| b.similarity.partial_cmp(&a.similarity).unwrap())
         });
+
         let colorize = !vimgrep && atty::is(atty::Stream::Stdout);
         let mut last_file: Option<&str> = None;
-        for p in printable_chunk {
+        for p in &printable_chunks {
             if *vimgrep {
                 p.print_vimgrep();
                 continue;

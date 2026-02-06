@@ -2,12 +2,13 @@ use args::{Args, SubCommands};
 use clap::Parser;
 use spinners::{Spinner, Spinners};
 use tracing::error;
-use utils::{cosine_similarity, get_stdin};
+use utils::get_stdin;
 
 mod args;
 mod chunker;
 mod clients;
 mod config;
+mod db;
 mod feature;
 mod files;
 mod paths;
@@ -127,6 +128,61 @@ async fn main() {
                     }
                     return;
                 }
+
+                if cache_args.stats {
+                    let cache_model_name = embeddings_client.model_name();
+                    let dim = clients::get_embedding_dim(cache_model_name);
+                    match db::open_or_create(cache_model_name, dim).await {
+                        Ok(database) => match database.connect() {
+                            Ok(conn) => match db::get_stats(&conn).await {
+                                Ok((files, chunks)) => {
+                                    println!("Cache statistics for model '{}':", cache_model_name);
+                                    println!("  Files:  {}", files);
+                                    println!("  Chunks: {}", chunks);
+                                }
+                                Err(err) => error!("Error getting stats: {}", err),
+                            },
+                            Err(err) => error!("Error connecting to database: {}", err),
+                        },
+                        Err(err) => error!("Error opening database: {}", err),
+                    }
+                    return;
+                }
+
+                if cache_args.cleanup {
+                    let cache_model_name = embeddings_client.model_name();
+                    let dim = clients::get_embedding_dim(cache_model_name);
+                    match db::open_or_create(cache_model_name, dim).await {
+                        Ok(database) => match database.connect() {
+                            Ok(conn) => {
+                                // Get all file paths in the database and check which still exist
+                                match db::get_all_file_paths(&conn).await {
+                                    Ok(paths_in_db) => {
+                                        let existing: Vec<String> = paths_in_db
+                                            .iter()
+                                            .filter(|p| std::path::Path::new(p).exists())
+                                            .cloned()
+                                            .collect();
+                                        match db::remove_missing_files(&conn, &existing).await {
+                                            Ok(removed) => {
+                                                println!(
+                                                    "Removed {} orphaned entries",
+                                                    removed
+                                                );
+                                            }
+                                            Err(err) => error!("Error during cleanup: {}", err),
+                                        }
+                                    }
+                                    Err(err) => error!("Error reading file paths: {}", err),
+                                }
+                            }
+                            Err(err) => error!("Error connecting to database: {}", err),
+                        },
+                        Err(err) => error!("Error opening database: {}", err),
+                    }
+                    return;
+                }
+
                 let mut spinner =
                     Spinner::new(Spinners::Dots9, "Building embeddings cache...".into());
 

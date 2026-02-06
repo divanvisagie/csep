@@ -104,6 +104,15 @@ pub trait EmbeddingsClient: Send + Sync {
     fn model_name(&self) -> &str;
 }
 
+/// Get the embedding dimensions for a given model name
+pub fn get_embedding_dim(model_name: &str) -> usize {
+    get_available_models()
+        .iter()
+        .find(|m| m.name == model_name)
+        .map(|m| m.dimensions)
+        .unwrap_or(384)
+}
+
 /// Create an embeddings client based on available features and GPU preference.
 ///
 /// When built with `cuda` or `metal` features and `no_gpu` is false,

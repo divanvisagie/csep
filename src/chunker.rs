@@ -1,27 +1,16 @@
-use std::{fs, path::PathBuf};
-
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
+use libsql::Connection;
 use sha2::{Digest, Sha256};
 use text_splitter::{ChunkConfig, TextSplitter};
 use tiktoken_rs::cl100k_base;
 use tracing::warn;
 
-use crate::{
-    clients::EmbeddingsClient,
-    files::read_file_with_fallback,
-    paths,
-};
+use crate::{clients::EmbeddingsClient, db, files::read_file_with_fallback};
 
-#[derive(Serialize, Deserialize)]
 pub struct Chunk {
     pub line: usize,
     pub text: String,
     pub embeddings: Vec<f32>,
-}
-
-pub fn get_cache_path(model_name: &str) -> PathBuf {
-    paths::embeddings_cache_dir(model_name)
 }
 
 pub fn count_lines_in_text(text: &str) -> usize {
@@ -29,11 +18,12 @@ pub fn count_lines_in_text(text: &str) -> usize {
 }
 
 /// Chunk a file into smaller pieces and get embeddings for each chunk
-/// using TextSplitter and the provided embeddings client
+/// using TextSplitter and the provided embeddings client.
+/// Uses libSQL database for caching instead of flat files.
 pub async fn get_chunks_and_embeddings_or_load_from_cache(
     file: &str,
     embeddings_client: &dyn EmbeddingsClient,
-    model_name: &str,
+    conn: &Connection,
 ) -> Result<(String, Vec<Chunk>)> {
     let file_text = match read_file_with_fallback(file) {
         Ok(text) => text,
@@ -44,23 +34,10 @@ pub async fn get_chunks_and_embeddings_or_load_from_cache(
     };
 
     let hash_of_file = Sha256::digest(file_text.as_bytes());
-    let cache_file_name = format!("{:x}.cache", hash_of_file);
-    let file_path = get_cache_path(model_name).join(cache_file_name);
+    let content_hash = format!("{:x}", hash_of_file);
 
-    if file_path.exists() {
-        match bincode::deserialize(&fs::read(&file_path)?) {
-            Ok(chunks) => {
-                return Ok((file.to_string(), chunks));
-            }
-            Err(err) => {
-                warn!("Error deserializing cache file {}: {}", file, err);
-                // Delete the file, if we cant read from it, its probably corrupt
-                match fs::remove_file(&file_path) {
-                    Ok(_) => (),
-                    Err(err) => warn!("Error removing cache file {}: {}", file, err),
-                }
-            }
-        };
+    if let Some(chunks) = db::get_cached_chunks(conn, &content_hash).await? {
+        return Ok((file.to_string(), chunks));
     }
 
     let tokenizer = cl100k_base()?;
@@ -72,7 +49,7 @@ pub async fn get_chunks_and_embeddings_or_load_from_cache(
 
     let mut lc = 1;
     #[allow(clippy::unused_enumerate_index)]
-    let chunks = str_chunks
+    let chunks: Vec<Chunk> = str_chunks
         .iter()
         .zip(embeddings_batch.iter())
         .enumerate()
@@ -86,8 +63,7 @@ pub async fn get_chunks_and_embeddings_or_load_from_cache(
         })
         .collect();
 
-    fs::create_dir_all(get_cache_path(model_name))?;
-    fs::write(file_path, bincode::serialize(&chunks)?)?;
+    db::store_file_chunks(conn, file, &content_hash, &chunks).await?;
 
     Ok((file.to_string(), chunks))
 }

@@ -78,6 +78,14 @@ pub struct CacheSubcommand {
     /// no other option is provided
     #[arg(short, long)]
     pub build: bool,
+
+    /// Remove orphaned entries for files that no longer exist
+    #[arg(long)]
+    pub cleanup: bool,
+
+    /// Show cache statistics (file count, chunk count)
+    #[arg(short, long)]
+    pub stats: bool,
 }
 
 #[derive(Parser, Debug)]

@@ -1,7 +1,7 @@
 use crate::{
     chunker::Chunk,
     clients::EmbeddingsClient,
-    cosine_similarity,
+    utils::cosine_similarity,
 };
 use anyhow::Result;
 
