@@ -3,7 +3,7 @@
 
 Cosine Similarity Embeddings Print
 
-**Version 0.2.0** - Cache location standardized to `~/.cache/csep/embeddings/` on all platforms. See [MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md) for details.
+**Version 0.3.0** - Embedding cache replaced with libSQL vector database. See [MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md) for details.
 
 ```
 ╭─── ╭────┬───────╮
@@ -83,6 +83,20 @@ Or you can pull whatever the latest published version is from crates.io with
 ```sh
 cargo install csep
 ```
+
+### GPU Acceleration
+
+To enable GPU-accelerated embeddings, build with the appropriate feature flag:
+
+```sh
+# NVIDIA GPU (CUDA)
+cargo install --path . --features cuda
+
+# Apple Silicon (Metal)
+cargo install --path . --features metal
+```
+
+Use `--no-gpu` at runtime to force the CPU/ONNX backend even when built with GPU support.
 
 ### Storage Locations
 

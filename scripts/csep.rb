@@ -15,7 +15,6 @@ class Csep < Formula
 
   def install
     bin.install "csep"
-    man1.install "csep.1"
   end
 
   test do

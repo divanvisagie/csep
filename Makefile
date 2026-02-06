@@ -1,4 +1,4 @@
-.PHONY: build release clean github-release install man
+.PHONY: build release clean github-release
 
 BINARY_NAME=csep
 
@@ -20,29 +20,13 @@ clean:
 	@cargo clean
 	@rm -rf $(RELEASE_DIR)
 
-install:
-	cargo build --release
-	cp target/release/csep /usr/local/bin/
-	cp docs/csep.1 /usr/local/share/man/man1/
-
-man:
-	groff -man -Tascii docs/csep.1 | less
-
-deb:
-	@sh ./scripts/build_deb.sh
-
-deb-publish:
-	@sh ./scripts/build_deb.sh "publish"
-
 tarball: build
 	@echo "Packaging the release..."
 	@mkdir -p $(RELEASE_DIR)
 	@if [ "$(TARGET)" = "" ]; then \
-		cp docs/csep.1 target/release/; \
-		tar -czf $(RELEASE_DIR)/$(BINARY_NAME)-$(PLATFORM)-$(ARCH).tar.gz -C target/release $(BINARY_NAME) csep.1; \
+		tar -czf $(RELEASE_DIR)/$(BINARY_NAME)-$(PLATFORM)-$(ARCH).tar.gz -C target/release $(BINARY_NAME); \
 	else \
-		cp docs/csep.1 target/$(TARGET)/release/; \
-		tar -czf $(RELEASE_DIR)/$(BINARY_NAME)-$(PLATFORM)-$(ARCH).tar.gz -C target/$(TARGET)/release $(BINARY_NAME) csep.1; \
+		tar -czf $(RELEASE_DIR)/$(BINARY_NAME)-$(PLATFORM)-$(ARCH).tar.gz -C target/$(TARGET)/release $(BINARY_NAME); \
 	fi
 	@echo "Release package created: $(RELEASE_DIR)/$(BINARY_NAME)-$(PLATFORM)-$(ARCH).tar.gz"
 
